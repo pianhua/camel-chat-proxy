@@ -131,6 +131,56 @@ remote_port = 5000
 
 适合：长期稳定运行，多设备使用。
 
+#### 火山引擎（字节跳动）专用步骤
+
+**1. 安全组放行端口**
+
+火山引擎控制台 → 云服务器 ECS → 安全组 → 配置规则 → 添加安全组规则：
+
+| 方向 | 协议 | 端口范围 | 源地址 | 策略 |
+|------|------|----------|--------|------|
+| 入方向 | TCP | 5000 | 0.0.0.0/0 | 允许 |
+
+> 如果只允许特定 IP 访问，把 `0.0.0.0/0` 改成你的 IP 段。
+
+**2. 服务器上部署**
+
+```bash
+# SSH 登录火山引擎服务器（用公网 IP）
+ssh root@你的公网IP
+
+# 克隆项目
+git clone https://github.com/pianhua/camel-chat-proxy.git
+cd camel-chat-proxy
+
+# 安装依赖
+pip install -r requirements.txt
+playwright install chromium
+
+# 启动（默认已绑定 0.0.0.0，公网可访问）
+python proxy.py
+```
+
+**3. 验证**
+
+```bash
+# 在服务器上测试
+curl http://localhost:5000/health
+
+# 在你电脑上测试（换成公网 IP）
+curl http://你的公网IP:5000/health
+```
+
+**4. SillyTavern 配置**
+
+| 配置项 | 值 |
+|--------|-----|
+| API URL | `http://你的公网IP:5000/v1` |
+
+---
+
+#### 通用云服务器步骤（阿里云/腾讯云/AWS 等）
+
 ```bash
 # 1. 服务器上克隆
 git clone https://github.com/pianhua/camel-chat-proxy.git

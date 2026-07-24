@@ -16,13 +16,22 @@ import uvicorn
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import StreamingResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
+from playwright.async_api import async_playwright
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # ============ 配置区（直接改这里） ============
+# 主账号（.com）
 CAMEL_EMAIL = "piannly@163.com"
 CAMEL_PASSWORD = "lyy050710"
+
+# 备用账号（.cm），取消注释启用多账号轮询
+# CAMEL_ACCOUNTS = [
+#     ("piannly@163.com", "lyy050710"),
+#     ("piannly@163.cm", "lyy050710"),
+# ]
+
 CAMEL_BASE = "https://chat.camel-hub.com"
 PORT = int(os.environ.get("PORT", "5000"))
 # =============================================
@@ -66,89 +75,45 @@ def _cookies() -> dict:
 
 
 async def _do_login() -> bool:
-    """Login to CaMeL and extract camel_session cookie."""
+    """Login to CaMeL via Playwright browser automation and extract camel_session cookie."""
     global _cookie, _cookie_time
     try:
-        async with httpx.AsyncClient(timeout=30.0, follow_redirects=False) as client:
-            # Step 1: GET login page
-            r = await client.get(f"{CAMEL_BASE}/login")
-            if r.status_code != 200:
-                logger.error("Login page fetch failed: %s", r.status_code)
-                return False
+        async with async_playwright() as p:
+            browser = await p.chromium.launch(headless=True)
+            context = await browser.new_context(
+                user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36",
+                locale="zh-CN",
+            )
+            page = await context.new_page()
 
-            # Step 2: Extract action ID
-            match = re.search(r'ACTION_ID_([a-f0-9]+)', r.text)
-            if not match:
-                logger.error("ACTION_ID not found in login page")
-                return False
-            action_id = match.group(1)
-            logger.debug("Found ACTION_ID: %s", action_id)
+            logger.info("Navigating to login page...")
+            await page.goto(f"{CAMEL_BASE}/login", wait_until="networkidle", timeout=30000)
 
-            # Step 3: Build multipart form (exact Next.js Server Action format)
-            boundary = "----WebKitFormBoundary" + uuid.uuid4().hex[:16]
-            lines = [
-                f"--{boundary}",
-                f'Content-Disposition: form-data; name="_1_$ACTION_ID_{action_id}"',
-                "",
-                "",
-                f"--{boundary}",
-                'Content-Disposition: form-data; name="_1_redirectTo"',
-                "",
-                "",
-                f"--{boundary}",
-                'Content-Disposition: form-data; name="_1_email"',
-                "",
-                CAMEL_EMAIL,
-                f"--{boundary}",
-                'Content-Disposition: form-data; name="_1_password"',
-                "",
-                CAMEL_PASSWORD,
-                f"--{boundary}",
-                'Content-Disposition: form-data; name="0"',
-                "",
-                '["$K1"]',
-                f"--{boundary}--",
-                "",
-            ]
-            body = "\r\n".join(lines).encode("utf-8")
-            headers = {
-                "content-type": f"multipart/form-data; boundary={boundary}",
-                "accept": "text/x-component",
-                "origin": CAMEL_BASE,
-                "referer": f"{CAMEL_BASE}/login",
-                "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36",
-            }
+            # Fill login form
+            await page.fill('input[name="email"]', CAMEL_EMAIL)
+            await page.fill('input[name="password"]', CAMEL_PASSWORD)
 
-            login_r = await client.post(f"{CAMEL_BASE}/login", content=body, headers=headers)
+            # Submit and wait for redirect
+            logger.info("Submitting login form...")
+            async with page.expect_navigation(wait_until="networkidle", timeout=30000):
+                await page.click('button[type="submit"]')
 
-            # Step 4: Extract session cookie
-            set_cookie = login_r.headers.get("set-cookie", "")
-            session_match = re.search(r'camel_session=([^;]+)', set_cookie)
-            if session_match:
-                _cookie = session_match.group(1)
-                _cookie_time = time.time()
-                logger.info("Cookie refreshed successfully")
-                return True
+            # Extract cookie
+            cookies = await context.cookies()
+            for c in cookies:
+                if c["name"] == "camel_session":
+                    _cookie = c["value"]
+                    _cookie_time = time.time()
+                    logger.info("Cookie refreshed successfully via Playwright")
+                    await browser.close()
+                    return True
 
-            # Check redirect for cookie
-            if login_r.status_code in (301, 302, 303, 307, 308):
-                redirect_url = login_r.headers.get("location", "")
-                if redirect_url:
-                    full_url = redirect_url if redirect_url.startswith("http") else f"{CAMEL_BASE}{redirect_url}"
-                    redirect_r = await client.get(full_url, headers={"referer": f"{CAMEL_BASE}/login"})
-                    set_cookie = redirect_r.headers.get("set-cookie", "")
-                    session_match = re.search(r'camel_session=([^;]+)', set_cookie)
-                    if session_match:
-                        _cookie = session_match.group(1)
-                        _cookie_time = time.time()
-                        logger.info("Cookie refreshed via redirect")
-                        return True
-
-            logger.error("No camel_session in response. Status: %s", login_r.status_code)
+            logger.error("camel_session cookie not found after login")
+            await browser.close()
             return False
 
     except Exception as e:
-        logger.exception("Login error: %s", e)
+        logger.exception("Playwright login error: %s", e)
         return False
 
 

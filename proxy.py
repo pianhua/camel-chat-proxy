@@ -4,6 +4,7 @@ Single-account, fully automatic cookie management. Deploy once, run forever.
 """
 
 import asyncio
+import json
 import logging
 import os
 import re

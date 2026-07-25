@@ -220,6 +220,8 @@ def _to_camel_model(openai_model: str) -> str:
         "deepseek-r1": "deepseek-r1",
         "deepseek-v4-pro": "deepseek-v4-pro",
         "kimi-k3": "kimi-k3",
+        "gpt-image-2": "gpt-image-2",
+        "gemini-3-pro-image-preview": "gemini-3-pro-image-preview",
     }
     return known.get(openai_model, "claude-opus-4-7")
 
@@ -278,7 +280,7 @@ async def list_models():
         "object": "list",
         "data": [
             {"id": m["id"], "object": "model", "created": 0, "owned_by": m.get("providerId", "CaMeL")}
-            for m in models if m.get("type") == "chat"
+            for m in models if m.get("type") in ("chat", "image")
         ],
     }
     _model_cache = result

@@ -1,4 +1,5 @@
-# Sensitive data
+# Sensitive data — NEVER commit these
+config.json
 .env
 accounts.json
 

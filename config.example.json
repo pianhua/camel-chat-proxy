@@ -1,0 +1,15 @@
+{
+  "api_keys": "sk-camel",
+  "admin_password": "admin",
+  "camel_accounts": [
+    {
+      "email": "your-email@example.com",
+      "password": "your-password",
+      "is_valid": false,
+      "login_time": "",
+      "last_test": ""
+    }
+  ],
+  "web_search": false,
+  "refresh_interval": 21600
+}

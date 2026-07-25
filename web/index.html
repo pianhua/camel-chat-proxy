@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CaMeL Chat Proxy — 管理面板</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,system-ui,"Segoe UI",sans-serif;background:#0f0f14;color:#e0e0e0;line-height:1.6}
+.container{max-width:900px;margin:0 auto;padding:20px}
+h1{color:#fff;font-size:24px;margin-bottom:4px}
+.subtitle{color:#888;font-size:14px;margin-bottom:20px}
+h2{color:#ccc;font-size:18px;margin:24px 0 12px;border-bottom:1px solid #2a2a3a;padding-bottom:8px}
+.card{background:#1a1a26;border:1px solid #2a2a3a;border-radius:8px;padding:20px;margin-bottom:16px}
+.form-group{margin-bottom:14px}
+label{display:block;color:#aaa;font-size:13px;margin-bottom:5px;font-weight:600}
+input,select{width:100%;padding:10px 12px;background:#0f0f14;border:1px solid #3a3a4a;border-radius:6px;color:#e0e0e0;font-size:14px}
+input:focus,select:focus{outline:none;border-color:#6366f1}
+.btn{padding:10px 20px;border:none;border-radius:6px;font-size:14px;cursor:pointer;font-weight:600;transition:all .2s}
+.btn-primary{background:#6366f1;color:#fff}.btn-primary:hover{background:#4f46e5}
+.btn-success{background:#10b981;color:#fff}.btn-success:hover{background:#059669}
+.btn-danger{background:#ef4444;color:#fff}.btn-danger:hover{background:#dc2626}
+.btn-secondary{background:#3a3a4a;color:#ccc}.btn-secondary:hover{background:#4a4a5a}
+.btn-sm{padding:6px 14px;font-size:12px}
+.row{display:flex;gap:12px;flex-wrap:wrap}
+.flex{display:flex;align-items:center;gap:8px}
+.badge{display:inline-block;padding:3px 10px;border-radius:12px;font-size:12px;font-weight:600}
+.badge-ok{background:#10b98122;color:#10b981;border:1px solid #10b98144}
+.badge-fail{background:#ef444422;color:#ef4444;border:1px solid #ef444444}
+.badge-pending{background:#f59e0b22;color:#f59e0b;border:1px solid #f59e0b44}
+.account-item{display:flex;justify-content:space-between;align-items:center;padding:12px;background:#0f0f14;border:1px solid #2a2a3a;border-radius:6px;margin-bottom:8px}
+.account-info{flex:1}
+.account-email{color:#fff;font-weight:600;font-size:14px}
+.account-meta{color:#888;font-size:12px;margin-top:4px}
+.account-actions{display:flex;gap:6px}
+.status-bar{display:flex;gap:24px;flex-wrap:wrap;margin-bottom:16px}
+.stat-item{background:#1a1a26;border:1px solid #2a2a3a;border-radius:8px;padding:16px 24px;text-align:center;min-width:100px}
+.stat-value{color:#fff;font-size:28px;font-weight:700}
+.stat-label{color:#888;font-size:12px;margin-top:4px}
+.endpoint{border:1px solid #3a3a4a;padding:8px 12px;border-radius:4px;margin:4px 0;font-family:monospace;font-size:13px}
+.toast{position:fixed;top:16px;right:16px;padding:12px 24px;border-radius:8px;color:#fff;font-size:14px;z-index:999;animation:fadeIn .3s}
+.toast-success{background:#10b981}
+.toast-error{background:#ef4444}
+@keyframes fadeIn{from{opacity:0;transform:translateY(-10px)}to{opacity:1;transform:translateY(0)}}
+code{background:#ffffff11;padding:2px 6px;border-radius:3px;font-size:13px}
+.refresh-indicator{color:#888;font-size:12px;margin-left:8px}
+</style>
+</head>
+<body>
+<div class="container">
+<h1>🐪 CaMeL Chat Proxy v3</h1>
+<p class="subtitle">CaMeL Chat → OpenAI + Anthropic 兼容 API<span class="refresh-indicator" id="refreshTimer"></span></p>
+
+<div class="status-bar">
+  <div class="stat-item"><div class="stat-value" id="accountCount">0</div><div class="stat-label">账号</div></div>
+  <div class="stat-item"><div class="stat-value" id="validCount">0</div><div class="stat-label">有效</div></div>
+  <div class="stat-item"><div class="stat-value" id="modelCount">0</div><div class="stat-label">模型</div></div>
+  <div class="stat-item"><div class="stat-value" id="proxyStatus">-</div><div class="stat-label">代理</div></div>
+</div>
+
+<!-- 账号管理 -->
+<div class="card">
+  <div class="flex" style="justify-content:space-between;margin-bottom:16px">
+    <h2 style="margin:0;border:none">👤 账号</h2>
+    <div class="row">
+      <button class="btn btn-success btn-sm" onclick="refreshCookies()">🔄 刷新Cookie</button>
+      <button class="btn btn-primary btn-sm" onclick="testAccounts()">🔍 测试连接</button>
+      <button class="btn btn-secondary btn-sm" onclick="toggleAddForm()">+ 添加</button>
+    </div>
+  </div>
+  <div id="accounts"><p style="color:#888">加载中…</p></div>
+  <div id="addAccountForm" style="display:none;margin-top:16px;padding:16px;background:#0f0f14;border-radius:6px">
+    <h3 style="margin-bottom:12px;color:#ccc">添加账号</h3>
+    <div class="form-group"><label>邮箱</label><input id="newEmail" placeholder="example@mail.com"></div>
+    <div class="form-group"><label>密码</label><input id="newPassword" type="password" placeholder="密码"></div>
+    <div class="row">
+      <button class="btn btn-primary" onclick="saveAccount()">保存并登录</button>
+      <button class="btn btn-secondary" onclick="toggleAddForm()">取消</button>
+    </div>
+  </div>
+</div>
+
+<!-- 设置 -->
+<div class="card">
+  <h2>⚙️ 设置</h2>
+  <div class="form-group"><label>API Keys（逗号分隔）</label><input id="apiKeys" placeholder="sk-camel"></div>
+  <div class="form-group"><label>管理密码</label><input id="adminPassword" type="password" placeholder="admin"></div>
+  <div class="form-group"><label>Cookie 刷新间隔（秒）</label><input id="refreshInterval" type="number" placeholder="21600"></div>
+  <div class="form-group"><label>全局联网搜索</label><select id="webSearch"><option value="false">关闭</option><option value="true">开启</option></select></div>
+  <button class="btn btn-primary" onclick="saveSettings()">💾 保存</button>
+</div>
+
+<!-- API 端点 -->
+<div class="card">
+  <h2>📡 API 端点</h2>
+  <div class="endpoint">GET  /v1/models</div>
+  <div class="endpoint">POST /v1/chat/completions（OpenAI）</div>
+  <div class="endpoint">POST /v1/messages（Anthropic）</div>
+  <div class="endpoint">GET  /health</div>
+  <p style="color:#888;font-size:13px;margin-top:8px">Auth: <code>Authorization: Bearer sk-camel</code> 或 <code>x-api-key: sk-camel</code></p>
+</div>
+</div>
+
+<script>
+let ADMIN_PW = 'admin';
+let refreshSec = 0;
+
+function showToast(msg, type='success') {
+  const t = document.createElement('div');
+  t.className = 'toast toast-'+type;
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 3000);
+}
+
+async function api(method, path, body=null) {
+  const opts = {method, headers:{'x-admin-password': ADMIN_PW}};
+  if (body) { opts.headers['Content-Type'] = 'application/json'; opts.body = JSON.stringify(body); }
+  try {
+    const r = await fetch(path, opts);
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.detail || r.statusText);
+    return data;
+  } catch(e) {
+    showToast(e.message, 'error');
+    return null;
+  }
+}
+
+// ─── 数据加载 ───
+
+async function loadAll() {
+  const [cfg, health] = await Promise.all([
+    api('GET', '/admin/config'),
+    fetch('/health').then(r => r.json()).catch(() => null)
+  ]);
+  if (!cfg) return;
+
+  ADMIN_PW = cfg.admin_password || 'admin';
+  document.getElementById('apiKeys').value = cfg.api_keys || 'sk-camel';
+  document.getElementById('adminPassword').value = cfg.admin_password || 'admin';
+  document.getElementById('refreshInterval').value = cfg.refresh_interval || 21600;
+  document.getElementById('webSearch').value = String(cfg.web_search || false);
+
+  // 用 health 数据渲染账号（实时cookie状态）
+  const healthAccounts = health?.accounts || [];
+  const healthMap = {};
+  healthAccounts.forEach(a => healthMap[a.email] = a);
+
+  // 合并 config 账号 + health 实时状态
+  const accounts = (cfg.camel_accounts || []).map(a => {
+    const live = healthMap[a.email] || {};
+    return {
+      email: a.email,
+      login_time: live.login_time || a.login_time || '',
+      last_test: a.last_test || '',
+      is_valid: a.is_valid,
+      cookie_ready: live.cookie_ready || false,
+      has_password: !!a.password,
+    };
+  });
+
+  renderAccounts(accounts);
+  renderStats(accounts, health);
+}
+
+function renderAccounts(accounts) {
+  const div = document.getElementById('accounts');
+  if (!accounts.length) {
+    div.innerHTML = '<p style="color:#888;padding:12px">未配置账号，请添加</p>';
+    return;
+  }
+  div.innerHTML = accounts.map((a,i) => `
+    <div class="account-item">
+      <div class="account-info">
+        <div class="account-email">${a.email}</div>
+        <div class="account-meta">
+          登录: ${a.login_time || '—'} |
+          测试: ${a.last_test || '—'} |
+          Cookie: <span class="badge ${a.cookie_ready?'badge-ok':'badge-fail'}">${a.cookie_ready?'就绪':'未就绪'}</span>
+          <span class="badge ${a.is_valid?'badge-ok':'badge-fail'}" style="margin-left:4px">${a.is_valid?'有效':'失效'}</span>
+        </div>
+      </div>
+      <div class="account-actions">
+        <button class="btn btn-primary btn-sm" onclick="refreshOne('${a.email}')">🔄 登录</button>
+        <button class="btn btn-danger btn-sm" onclick="removeAccount(${i})">删除</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function renderStats(accounts, health) {
+  document.getElementById('accountCount').textContent = accounts.length;
+  document.getElementById('validCount').textContent = accounts.filter(a => a.cookie_ready).length;
+  document.getElementById('modelCount').textContent = health?.model_count || '?';
+  document.getElementById('proxyStatus').textContent = health?.status || '?';
+  document.getElementById('proxyStatus').style.color = health?.status === 'ok' ? '#10b981' : '#ef4444';
+
+  // refresh timer
+  refreshSec = 30;
+  updateTimer();
+}
+
+function updateTimer() {
+  const el = document.getElementById('refreshTimer');
+  if (el && refreshSec > 0) {
+    el.textContent = `(${refreshSec}s 后自动刷新)`;
+    refreshSec--;
+    setTimeout(updateTimer, 1000);
+  } else {
+    el.textContent = '(刷新中…)';
+    loadAll().then(() => {});
+  }
+}
+
+// ─── 账号操作 ───
+
+function toggleAddForm() {
+  const f = document.getElementById('addAccountForm');
+  f.style.display = f.style.display === 'none' ? 'block' : 'none';
+  document.getElementById('newEmail').value = '';
+  document.getElementById('newPassword').value = '';
+}
+
+async function saveAccount() {
+  const email = document.getElementById('newEmail').value.trim();
+  const password = document.getElementById('newPassword').value;
+  if (!email || !password) { showToast('请填写邮箱和密码','error'); return; }
+
+  const cfg = await api('GET', '/admin/config');
+  if (!cfg) return;
+  cfg.camel_accounts = cfg.camel_accounts || [];
+  cfg.camel_accounts.push({email, password, is_valid: false, login_time: '', last_test: ''});
+  await api('POST', '/admin/config', cfg);
+  toggleAddForm();
+
+  // 自动登录新账号
+  showToast('账号已添加，正在登录…');
+  await api('POST', '/admin/login');  // triggers login
+  loadAll();
+}
+
+async function removeAccount(index) {
+  if (!confirm('确认删除？')) return;
+  const cfg = await api('GET', '/admin/config');
+  if (!cfg) return;
+  cfg.camel_accounts.splice(index, 1);
+  await api('POST', '/admin/config', cfg);
+  showToast('已删除');
+  loadAll();
+}
+
+async function refreshCookies() {
+  const r = await api('POST', '/admin/refresh-cookies');
+  if (r) {
+    const oks = r.results.filter(x => x.ok).length;
+    showToast(`刷新完成: ${oks}/${r.results.length} 成功`);
+  }
+  loadAll();
+}
+
+async function testAccounts() {
+  const r = await api('POST', '/admin/test-accounts');
+  if (r) showToast('测试完成');
+  loadAll();
+}
+
+async function refreshOne(email) {
+  showToast(`正在登录 ${email}…`);
+  await api('POST', '/admin/login', {email});
+  loadAll();
+}
+
+async function saveSettings() {
+  const cfg = await api('GET', '/admin/config');
+  if (!cfg) return;
+  cfg.api_keys = document.getElementById('apiKeys').value;
+  cfg.admin_password = document.getElementById('adminPassword').value;
+  cfg.refresh_interval = parseInt(document.getElementById('refreshInterval').value) || 21600;
+  cfg.web_search = document.getElementById('webSearch').value === 'true';
+  await api('POST', '/admin/config', cfg);
+  ADMIN_PW = cfg.admin_password;
+  showToast('已保存');
+}
+
+// ─── 启动 ───
+loadAll();
+</script>
+</body>
+</html>

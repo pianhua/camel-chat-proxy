@@ -112,14 +112,27 @@ class ConfigManager:
             keys = [k.strip() for k in self.config.api_keys.split(",")]
             return key in keys
 
-    def get_next_account(self) -> Optional[CamelAccount]:
-        """轮询获取下一个账号。"""
+    def get_next_account(self, require_valid: bool = True) -> Optional[CamelAccount]:
+        """轮询获取下一个可用账号。
+
+        Args:
+            require_valid: 如果 True，跳过 is_valid=False 的账号（最多尝试一圈）
+        """
         with self.lock:
             if not self.config.camel_accounts:
                 return None
-            account = self.config.camel_accounts[self.account_idx % len(self.config.camel_accounts)]
-            self.account_idx += 1
-            return account
+
+            total = len(self.config.camel_accounts)
+            tried = 0
+            while tried < total:
+                account = self.config.camel_accounts[self.account_idx % total]
+                self.account_idx += 1
+                tried += 1
+                if not require_valid or account.is_valid:
+                    return account
+
+            # 所有账号都无效，返回第一个（至少试试）
+            return self.config.camel_accounts[self.account_idx % total]
 
     def update_config(self, new_config: dict):
         with self.lock:

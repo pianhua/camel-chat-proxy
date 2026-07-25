@@ -244,3 +244,17 @@ class CamelClient:
             "hasCustomSystemPrompt": has_system,
             "webSearch": web_search,
         }
+
+    async def delete_conversation(self, http_client: httpx.AsyncClient, conversation_id: str) -> bool:
+        """删除 CaMeL 服务端的一条会话（避免侧边栏越积越多）。"""
+        try:
+            r = await http_client.post(
+                f"{CAMEL_BASE}/api/chat/conversation/delete",
+                headers=await self._headers({"content-type": "application/json"}),
+                cookies=self._cookies(),
+                json=[conversation_id],
+                timeout=30.0,
+            )
+            return r.status_code == 200
+        except Exception:
+            return False

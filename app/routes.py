@@ -12,6 +12,7 @@ from pathlib import Path
 from .auth import verify_admin
 from .config import config_manager, CamelAccount
 from .camel_client import CamelClient, CamelAPIError, CAMEL_BASE
+from .session_store import session_store
 
 router = APIRouter()
 
@@ -140,11 +141,14 @@ async def chat_completions(request: Request):
     camel = _get_camel_client(account)
     await camel.ensure_cookie(http_client)
 
-    # 获取或创建 session
-    session_id = body.get("session_id")  # 可选，复用会话
+    # 获取或复用 session（按账号+模型缓存，避免越积越多）
+    session_id = body.get("session_id")
+    if not session_id:
+        session_id = session_store.get(account.email, model)
     if not session_id:
         try:
             session_id = await camel.create_session(http_client, title="chat", model=model)
+            session_store.set(account.email, model, session_id)
         except Exception:
             session_id = None  # 失败也不阻塞
 

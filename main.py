@@ -64,6 +64,45 @@ async def startup():
     except Exception as e:
         print(f"[Startup] ⚠ Model pre-load failed (non-fatal): {e}")
 
+    # 启动后台会话清理任务（每10分钟清一次过期会话）
+    import threading
+    threading.Thread(target=_cleanup_old_sessions, daemon=True).start()
+    print("[Startup] Session cleanup worker started (runs every 10min)")
+
+
+def _cleanup_old_sessions():
+    """后台清理 CaMeL 上过期的会话。"""
+    import time, asyncio
+
+    async def _run():
+        from app.session_store import session_store
+        from app.camel_client import CamelClient
+        from app.routes import _get_http_client
+
+        while True:
+            await asyncio.sleep(600)  # 每10分钟
+            expired = session_store.get_all_expired()
+            if not expired:
+                continue
+
+            print(f"[Cleanup] Found {len(expired)} expired sessions")
+            http_client = await _get_http_client()
+            for email, session_id in expired:
+                try:
+                    # 找到对应账号
+                    from app.routes import _get_camel_client
+                    from app.config import config_manager
+                    for acc in config_manager.config.camel_accounts:
+                        if acc.email == email:
+                            camel = _get_camel_client(acc)
+                            await camel.ensure_cookie(http_client)
+                            await camel.delete_conversation(session_id)
+                            break
+                except Exception:
+                    pass
+
+    asyncio.run(_run())
+
 
 @app.on_event("shutdown")
 async def shutdown():

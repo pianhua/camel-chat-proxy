@@ -206,6 +206,94 @@ async def chat_completions(request: Request):
     }
 
 
+# ─── OpenAI Images API ───────────────────────────────────────
+
+# 模型名映射（兼容 dall-e-3 等标准名）
+IMAGE_MODEL_MAP = {
+    "dall-e-3": "gpt-image-2",
+    "dall-e-2": "gpt-image-2",
+    "gpt-image-2": "gpt-image-2",
+    "gemini-3-pro-image-preview": "gemini-3-pro-image-preview",
+}
+
+
+@router.post("/v1/images/generations")
+async def images_generations(request: Request):
+    """OpenAI 兼容图片生成接口。"""
+    authorization = request.headers.get("authorization")
+    x_api_key = request.headers.get("x-api-key")
+    api_key = authorization or (f"Bearer {x_api_key}" if x_api_key else None)
+    if not validate_api_key(api_key):
+        raise HTTPException(status_code=401, detail={"error": {"message": "invalid api key"}})
+
+    body = await request.json()
+    prompt = body.get("prompt", "")
+    if not prompt:
+        raise HTTPException(status_code=400, detail={"error": {"message": "prompt is required"}})
+
+    # 映射模型名
+    raw_model = body.get("model", "gpt-image-2")
+    model = IMAGE_MODEL_MAP.get(raw_model, "gpt-image-2")
+    n = min(body.get("n", 1), 4)  # 最多 4 张
+    size = body.get("size", "1024x1024")
+    response_format = body.get("response_format", "b64_json")
+
+    # 获取账号
+    account = config_manager.get_next_account()
+    if not account:
+        raise HTTPException(status_code=503, detail={"error": {"message": "no account configured"}})
+
+    http_client = await _get_http_client()
+    camel = _get_camel_client(account)
+    await camel.ensure_cookie(http_client)
+
+    # 通过 chat completion 调用生图模型
+    images = []
+    import re, base64
+
+    for i in range(n):
+        try:
+            # 拼接 size 到 prompt
+            full_prompt = prompt
+            if size and "1024" not in prompt.lower():
+                full_prompt = f"{size} — {prompt}"
+
+            # 创建临时会话
+            session_id = uuid.uuid4().hex[:32]
+            try:
+                session_id = await camel.create_session(http_client, title="image-gen", model=model)
+            except Exception:
+                pass
+
+            text = await camel.chat_completion(
+                http_client=http_client,
+                messages=[{"role": "user", "content": full_prompt}],
+                model=model,
+                session_id=session_id,
+            )
+
+            # 提取 base64
+            match = re.search(r"data:image/\w+;base64,([^)\"]+)", text)
+            if match:
+                b64 = match.group(1)
+                if response_format == "b64_json":
+                    images.append({"b64_json": b64})
+                else:
+                    # url 格式：暂时返回 base64（CaMeL 没有持久化 URL）
+                    images.append({"b64_json": b64})
+            else:
+                # 没匹配到图片，返回原始文本
+                images.append({"b64_json": ""})
+
+        except CamelAPIError as e:
+            raise HTTPException(status_code=e.status_code, detail={"error": {"message": str(e)}})
+
+    return {
+        "created": int(time.time()),
+        "data": images,
+    }
+
+
 # ─── 健康检查 ─────────────────────────────────────────────────
 
 @router.get("/health")

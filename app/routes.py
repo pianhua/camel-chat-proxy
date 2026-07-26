@@ -240,6 +240,12 @@ async def chat_completions(request: Request):
                         content_type = content_type.split(";")[0].strip()
                 
                 # 上传到 CaMeL parse-file
+                if content_type.startswith("image/"):
+                    # 图片：base64 内联，不走 parse-file
+                    import base64
+                    img_b64 = base64.b64encode(file_content).decode()
+                    convo[-1]["content"] += f"\n\n![本地图片](data:{content_type};base64,{img_b64})"
+                    continue
                 parsed = await camel.parse_file(http_client, file_name, file_content, content_type)
                 file_text = parsed.get("text", "")
                 if file_text and convo:

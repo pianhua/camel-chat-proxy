@@ -66,17 +66,16 @@ def _extract_text(content) -> str:
 
 
 def _parse_multimodal(content):
-    """解析多模态消息，返回 (text, [image_urls])。"""
+    """解析多模态消息，返回 (text, [image_urls], [file_urls])。"""
     if isinstance(content, str):
-        # 尝试从 markdown 格式提取图片 URL
         import re
-        urls = re.findall(r'!\[.*?\]\((https?://[^\)]+)\)', content)
-        if urls:
-            return content, urls
-        return content, []
+        image_urls = re.findall(r'!\\[.*?\\]\\((https?://[^\\)]+)\\)', content)
+        file_urls = re.findall(r'\\[📎.*?\\]\\((https?://[^\\)]+)\\)', content)
+        return content, image_urls, file_urls
     if isinstance(content, list):
         text_parts = []
         image_urls = []
+        file_urls = []
         for item in content:
             if isinstance(item, dict):
                 if item.get("type") == "text":
@@ -86,8 +85,13 @@ def _parse_multimodal(content):
                     if url:
                         image_urls.append(url)
                         text_parts.append(f"[image: {url}]")
-        return "\n".join(text_parts) if text_parts else str(content), image_urls
-    return str(content), []
+                elif item.get("type") == "file_url":
+                    url = item.get("file_url", {}).get("url", "")
+                    if url:
+                        file_urls.append(url)
+                        text_parts.append(f"[file: {url}]")
+        return "\\n".join(text_parts) if text_parts else str(content), image_urls, file_urls
+    return str(content), [], []
 
 
 # ─── 模型发现 ─────────────────────────────────────────────────
@@ -171,7 +175,7 @@ async def chat_completions(request: Request):
         if m.get("role") not in ("user", "assistant"):
             continue
         content = m.get("content", "")
-        text_part, image_urls = _parse_multimodal(content)
+        text_part, image_urls, file_urls = _parse_multimodal(content)
         convo.append({"role": m["role"], "content": text_part})
         for url in image_urls:
             multi_medias.append({"type": "image", "url": url})
@@ -180,6 +184,33 @@ async def chat_completions(request: Request):
         raise HTTPException(status_code=400, detail={"error": {"message": "user or assistant message required"}})
 
     # 获取账号和 client
+    account = config_manager.get_next_account()
+    if not account:
+        raise HTTPException(status_code=503, detail={"error": {"message": "no camel account configured"}})
+
+    http_client = await _get_http_client()
+    camel = _get_camel_client(account)
+    await camel.ensure_cookie(http_client)
+
+    # 处理文件上传：下载文件 → 上传到 CaMeL parse-file → 把文本附加到消息
+    if file_urls:
+        for file_url in file_urls:
+            try:
+                file_resp = await http_client.get(file_url, timeout=30.0, follow_redirects=True)
+                if file_resp.status_code == 200:
+                    file_content = file_resp.content
+                    file_name = file_url.split("/")[-1].split("?")[0] or "file"
+                    content_type = file_resp.headers.get("content-type", "application/octet-stream")
+                    if ";" in content_type:
+                        content_type = content_type.split(";")[0].strip()
+                    parsed = await camel.parse_file(http_client, file_name, file_content, content_type)
+                    file_text = parsed.get("text", "")
+                    if file_text and convo:
+                        convo[-1]["content"] += f"\n\n[文件内容: {file_name}]\n{file_text}"
+            except Exception as e:
+                print(f"[File Upload] Failed: {e}")
+
+    # 获取或复用 session
     account = config_manager.get_next_account()
     if not account:
         raise HTTPException(status_code=503, detail={"error": {"message": "no camel account configured"}})

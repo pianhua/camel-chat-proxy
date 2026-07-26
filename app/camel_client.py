@@ -258,3 +258,33 @@ class CamelClient:
             return r.status_code == 200
         except Exception:
             return False
+
+    async def parse_file(self, http_client: httpx.AsyncClient, file_name: str, file_content: bytes, mime_type: str = "text/plain") -> dict:
+        """上传文件到 CaMeL 并获取解析后的文本内容。
+
+        Args:
+            file_name: 文件名
+            file_content: 文件内容的字节数据
+            mime_type: 文件 MIME 类型
+
+        Returns:
+            {"text": "...", "fileName": "...", "fileSize": 123, "type": "text"}
+        """
+        import uuid
+        boundary = f"----CaMeLFile{uuid.uuid4().hex[:12]}"
+        body = (
+            f'--{boundary}\r\n'
+            f'Content-Disposition: form-data; name="file"; filename="{file_name}"\r\n'
+            f'Content-Type: {mime_type}\r\n\r\n'
+        ).encode() + file_content + f'\r\n--{boundary}--\r\n'.encode()
+
+        r = await http_client.post(
+            f"{CAMEL_BASE}/api/chat/parse-file",
+            headers=await self._headers({"content-type": f"multipart/form-data; boundary={boundary}"}),
+            cookies=self._cookies(),
+            content=body,
+            timeout=30.0,
+        )
+        if r.status_code != 200:
+            raise CamelAPIError(r.status_code, r.text)
+        return r.json()

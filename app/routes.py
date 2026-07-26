@@ -53,6 +53,43 @@ def validate_api_key(authorization: Optional[str]) -> bool:
     return config_manager.validate_api_key(key)
 
 
+# ─── 多模态消息处理 ─────────────────────────────────────────
+
+def _extract_text(content) -> str:
+    """从 content（可能为字符串或数组）提取纯文本。"""
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        parts = [item.get("text", "") for item in content if isinstance(item, dict) and item.get("type") == "text"]
+        return "\n".join(parts)
+    return str(content)
+
+
+def _parse_multimodal(content):
+    """解析多模态消息，返回 (text, [image_urls])。"""
+    if isinstance(content, str):
+        # 尝试从 markdown 格式提取图片 URL
+        import re
+        urls = re.findall(r'!\[.*?\]\((https?://[^\)]+)\)', content)
+        if urls:
+            return content, urls
+        return content, []
+    if isinstance(content, list):
+        text_parts = []
+        image_urls = []
+        for item in content:
+            if isinstance(item, dict):
+                if item.get("type") == "text":
+                    text_parts.append(item.get("text", ""))
+                elif item.get("type") == "image_url":
+                    url = item.get("image_url", {}).get("url", "")
+                    if url:
+                        image_urls.append(url)
+                        text_parts.append(f"[image: {url}]")
+        return "\n".join(text_parts) if text_parts else str(content), image_urls
+    return str(content), []
+
+
 # ─── 模型发现 ─────────────────────────────────────────────────
 
 async def _discover_models(http_client: httpx.AsyncClient) -> list:
@@ -124,10 +161,20 @@ async def chat_completions(request: Request):
     if not messages:
         raise HTTPException(status_code=400, detail={"error": {"message": "messages required"}})
 
-    # 分离 system prompt
-    system_parts = [m["content"] for m in messages if m.get("role") == "system"]
+    # 分离 system prompt + 处理多模态消息
+    system_parts = [_extract_text(m.get("content", "")) for m in messages if m.get("role") == "system"]
     system_prompt = "\n".join(system_parts) if system_parts else ""
-    convo = [{"role": m["role"], "content": m.get("content", "")} for m in messages if m.get("role") in ("user", "assistant")]
+
+    convo = []
+    multi_medias = []
+    for m in messages:
+        if m.get("role") not in ("user", "assistant"):
+            continue
+        content = m.get("content", "")
+        text_part, image_urls = _parse_multimodal(content)
+        convo.append({"role": m["role"], "content": text_part})
+        for url in image_urls:
+            multi_medias.append({"type": "image", "url": url})
 
     if not convo:
         raise HTTPException(status_code=400, detail={"error": {"message": "user or assistant message required"}})

@@ -3,6 +3,8 @@
 import json
 import time
 import uuid
+import os
+import re
 import httpx
 from typing import Optional
 from fastapi import APIRouter, HTTPException, Header, Request
@@ -68,9 +70,8 @@ def _extract_text(content) -> str:
 def _parse_multimodal(content):
     """解析多模态消息，返回 (text, [image_urls], [file_urls])。"""
     if isinstance(content, str):
-        import re
-        image_urls = re.findall(r'!\\[.*?\\]\\((https?://[^\\)]+)\\)', content)
-        file_urls = re.findall(r'\\[📎.*?\\]\\((https?://[^\\)]+)\\)', content)
+        image_urls = re.findall(r'!\[.*?\]\((https?://[^\)]+)\)', content)
+        file_urls = re.findall(r'\[📎.*?\]\(([^\)]+)\)', content)
         return content, image_urls, file_urls
     if isinstance(content, list):
         text_parts = []
@@ -196,17 +197,53 @@ async def chat_completions(request: Request):
     if file_urls:
         for file_url in file_urls:
             try:
-                file_resp = await http_client.get(file_url, timeout=30.0, follow_redirects=True)
-                if file_resp.status_code == 200:
+                # 判断是否本地路径
+                is_local = (
+                    file_url.startswith("file:///") or
+                    bool(re.match(r'^[A-Za-z]:[/\\\\]', file_url)) or
+                    (file_url.startswith("/") and not file_url.startswith("//"))
+                )
+                if is_local:
+                    # 本地文件：直接读取
+                    local_path = file_url
+                    if local_path.startswith("file:///"):
+                        local_path = local_path[8:]  # 去掉 file:///
+                    # Windows 路径修正
+                    local_path = os.path.normpath(local_path)
+                    if not os.path.exists(local_path):
+                        print(f"[File Upload] Local file not found: {local_path}")
+                        continue
+                    file_name = os.path.basename(local_path) or "file"
+                    # 推断 MIME
+                    ext = os.path.splitext(file_name)[1].lower()
+                    mime_map = {
+                        ".txt":"text/plain", ".md":"text/markdown", ".json":"application/json",
+                        ".py":"text/x-python", ".js":"text/javascript", ".html":"text/html",
+                        ".css":"text/css", ".csv":"text/csv", ".xml":"text/xml",
+                        ".jpg":"image/jpeg", ".jpeg":"image/jpeg", ".png":"image/png",
+                        ".gif":"image/gif", ".webp":"image/webp", ".bmp":"image/bmp",
+                        ".pdf":"application/pdf", ".doc":"application/msword",
+                        ".docx":"application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                    }
+                    content_type = mime_map.get(ext, "application/octet-stream")
+                    with open(local_path, "rb") as f:
+                        file_content = f.read()
+                else:
+                    # 远程 URL：下载
+                    file_resp = await http_client.get(file_url, timeout=30.0, follow_redirects=True)
+                    if file_resp.status_code != 200:
+                        continue
                     file_content = file_resp.content
                     file_name = file_url.split("/")[-1].split("?")[0] or "file"
                     content_type = file_resp.headers.get("content-type", "application/octet-stream")
                     if ";" in content_type:
                         content_type = content_type.split(";")[0].strip()
-                    parsed = await camel.parse_file(http_client, file_name, file_content, content_type)
-                    file_text = parsed.get("text", "")
-                    if file_text and convo:
-                        convo[-1]["content"] += f"\n\n[文件内容: {file_name}]\n{file_text}"
+                
+                # 上传到 CaMeL parse-file
+                parsed = await camel.parse_file(http_client, file_name, file_content, content_type)
+                file_text = parsed.get("text", "")
+                if file_text and convo:
+                    convo[-1]["content"] += f"\n\n[文件内容: {file_name}]\n{file_text}"
             except Exception as e:
                 print(f"[File Upload] Failed: {e}")
 

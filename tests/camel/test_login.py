@@ -1,11 +1,11 @@
+import sys
+
 import pytest
 from app.camel import login
 
 
 async def test_login_returns_none_on_playwright_failure(monkeypatch):
-    def _boom():
-        raise RuntimeError("no playwright")
-    monkeypatch.setitem(__import__("sys").modules, "playwright.async_api", None)
+    monkeypatch.setitem(sys.modules, "playwright.async_api", None)
     result = await login.playwright_login("a@b.com", "pw")
     assert result is None
 

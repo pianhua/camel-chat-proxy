@@ -14,4 +14,12 @@ echo "🚀 CaMeL Proxy started (PID: $PID, port: $PORT)"
 sleep 3
 
 # 健康检查
-curl -s http://localhost:$PORT/health | python -m json.tool 2>/dev/null || echo "⚠ Health check failed — check proxy.log"
+for i in 1 2 3; do
+    HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:$PORT/health)
+    if [ "$HTTP_CODE" = "200" ]; then
+        echo "✅ Health check passed (HTTP 200)"
+        exit 0
+    fi
+    sleep 2
+done
+echo "⚠ Health check failed — check proxy.log"

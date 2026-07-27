@@ -151,6 +151,7 @@ code{background:#3d392912;padding:2px 6px;border-radius:4px;font-size:13px}
 
 <script>
 let refreshSec = 0;
+let refreshTimer = null;
 
 const pwInput = document.getElementById('pwInput');
 pwInput.value = localStorage.getItem('camel_admin_pw') || 'admin';
@@ -260,11 +261,13 @@ function renderStats(accounts, health, cfg) {
 }
 
 function updateTimer() {
+  clearTimeout(refreshTimer);
+  refreshTimer = null;
   const el = document.getElementById('refreshTimer');
   if (el && refreshSec > 0) {
     el.textContent = `(${refreshSec}s 后自动刷新)`;
     refreshSec--;
-    setTimeout(updateTimer, 1000);
+    refreshTimer = setTimeout(updateTimer, 1000);
   } else if (el) {
     el.textContent = '(刷新中…)';
     loadAll();

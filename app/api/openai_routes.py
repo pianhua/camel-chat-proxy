@@ -99,9 +99,8 @@ async def chat_completions(request: Request):
     request_id = str(uuid.uuid4())
 
     async def _after_first_reply():
-        first_user = next((m for m in payload["messages"] if m["role"] == "user"), None)
-        if first_user:
-            await session_pool.sync_title(http, camel, account.email, first_user["content"])
+        if payload.get("userText"):
+            await session_pool.sync_title(http, camel, account.email, payload["userText"])
 
     if stream:
         async def _stream():

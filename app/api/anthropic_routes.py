@@ -7,6 +7,7 @@ from typing import Optional
 from fastapi import APIRouter, HTTPException, Header, Request
 from fastapi.responses import StreamingResponse
 
+from app.core.config import config_manager
 from app.core.http import get_http_client
 from app.camel.client import CamelAPIError
 from app.camel.session_pool import session_pool
@@ -35,7 +36,7 @@ async def anthropic_messages(request: Request, x_api_key: Optional[str] = Header
     if not messages:
         raise HTTPException(status_code=400, detail=_err("invalid_request_error", "messages required"))
     stream = bool(body.get("stream", False))
-    web_search = bool(body.get("web_search", False))
+    web_search = bool(body.get("web_search", config_manager.config.web_search))
 
     openai_messages = to_openai_messages(messages, body.get("system", ""))
 
@@ -46,14 +47,25 @@ async def anthropic_messages(request: Request, x_api_key: Optional[str] = Header
         raise HTTPException(status_code=e.status_code, detail=_err("service_unavailable", str(e.detail)))
 
     session_id = await session_pool.get_session(http, camel, model, account.email)
-    payload = await build_payload(http, camel, openai_messages, model, session_id, web_search)
+    try:
+        payload = await build_payload(http, camel, openai_messages, model, session_id, web_search)
+    except CamelAPIError as e:
+        raise HTTPException(status_code=e.status_code, detail=_err("api_error", str(e)))
     session_pool.record_turn(account.email)
     msg_id = str(uuid.uuid4())
+
+    async def _after_first_reply():
+        if payload.get("userText"):
+            await session_pool.sync_title(http, camel, account.email, payload["userText"])
 
     if stream:
         async def _stream_sse():
             try:
+                first = True
                 async for chunk in camel.stream_chat(http, payload):
+                    if first:
+                        first = False
+                        await _after_first_reply()
                     event = {"type": "content_block_delta", "index": 0, "delta": {"type": "text_delta", "text": chunk}}
                     yield f"event: content_block_delta\ndata: {json.dumps(event, ensure_ascii=False)}\n\n"
                 yield f"event: message_stop\ndata: {json.dumps({'type': 'message_stop'})}\n\n"
@@ -63,6 +75,7 @@ async def anthropic_messages(request: Request, x_api_key: Optional[str] = Header
 
     try:
         text = await camel.chat_completion(http, payload)
+        await _after_first_reply()
     except CamelAPIError as e:
         raise HTTPException(status_code=e.status_code, detail=_err("api_error", str(e)))
 

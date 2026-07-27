@@ -27,6 +27,8 @@ async def get_admin_config(x_admin_password: Optional[str] = Header(None, alias=
 async def set_admin_config(request: Request, x_admin_password: Optional[str] = Header(None, alias="x-admin-password")):
     verify_admin(x_admin_password)
     config_manager.update_config(await request.json())
+    from app.camel.session_pool import session_pool
+    session_pool.rotate_turns = config_manager.config.session_rotate_turns
     _usage_cache["data"] = None
     _usage_cache["time"] = 0
     return {"status": "ok", "config": config_manager.get_config()}

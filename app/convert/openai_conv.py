@@ -1,7 +1,6 @@
 """OpenAI 消息格式 → CaMeL payload 转换。"""
 
 import re
-from typing import Optional
 
 from app.camel.client import new_uuid
 from .attachments import resolve_image_to_data_url, resolve_file_to_text

@@ -118,7 +118,7 @@ async def chat_completions(request: Request):
                     }
                     yield f"data: {json.dumps(data, ensure_ascii=False)}\n\n"
                 yield "data: [DONE]\n\n"
-            except CamelAPIError as e:
+            except Exception as e:
                 yield f"data: {json.dumps({'error': {'message': f'CaMeL API error: {e}'}})}\n\n"
                 yield "data: [DONE]\n\n"
         return StreamingResponse(_stream(), media_type="text/event-stream")
@@ -145,7 +145,10 @@ async def images_generations(request: Request):
         raise HTTPException(status_code=400, detail={"error": {"message": "prompt is required"}})
 
     model = IMAGE_MODEL_MAP.get(body.get("model", "gpt-image-2"), "gpt-image-2")
-    n = min(int(body.get("n", 1)), 4)
+    try:
+        n = min(int(body.get("n", 1)), 4)
+    except (TypeError, ValueError):
+        n = 1
     size = OPENAI_SIZE_TO_CAMEL.get(body.get("size", "1024x1024"), "auto")
 
     http = await get_http_client()

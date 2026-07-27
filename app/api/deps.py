@@ -5,7 +5,7 @@ from typing import Optional
 from fastapi import HTTPException
 
 from app.core.config import config_manager, CamelAccount
-from app.camel.client import CamelClient, CamelAPIError
+from app.camel.client import CamelClient
 
 _clients: dict[str, CamelClient] = {}
 

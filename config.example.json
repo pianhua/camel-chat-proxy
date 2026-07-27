@@ -11,5 +11,6 @@
     }
   ],
   "web_search": false,
-  "refresh_interval": 21600
+  "refresh_interval": 21600,
+  "session_rotate_turns": 10
 }

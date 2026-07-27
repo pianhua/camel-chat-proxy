@@ -390,12 +390,19 @@ async def images_generations(request: Request):
             except Exception:
                 pass
 
-            text = await camel.chat_completion(
-                http_client=http_client,
-                messages=[{"role": "user", "content": full_prompt}],
-                model=model,
-                session_id=session_id,
-            )
+            try:
+                text = await camel.chat_completion(
+                    http_client=http_client,
+                    messages=[{"role": "user", "content": full_prompt}],
+                    model=model,
+                    session_id=session_id,
+                )
+            finally:
+                # 删除临时生图会话，避免堆积
+                try:
+                    await camel.delete_conversation(http_client, session_id)
+                except Exception:
+                    pass
 
             # 提取 base64
             match = re.search(r"data:image/\w+;base64,([^)\"]+)", text)

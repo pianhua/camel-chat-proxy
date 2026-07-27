@@ -248,14 +248,13 @@ class CamelClient:
     async def delete_conversation(self, http_client: httpx.AsyncClient, conversation_id: str) -> bool:
         """删除 CaMeL 服务端的一条会话（避免侧边栏越积越多）。"""
         try:
-            r = await http_client.post(
-                f"{CAMEL_BASE}/api/chat/conversation/delete",
-                headers=await self._headers({"content-type": "application/json"}),
+            r = await http_client.delete(
+                f"{CAMEL_BASE}/api/chat/sessions/{conversation_id}",
+                headers=await self._headers({"accept": "*/*"}),
                 cookies=self._cookies(),
-                json=[conversation_id],
                 timeout=30.0,
             )
-            return r.status_code == 200
+            return r.status_code in (200, 204)
         except Exception:
             return False
 

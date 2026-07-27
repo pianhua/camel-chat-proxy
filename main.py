@@ -96,10 +96,11 @@ def _cleanup_old_sessions():
                         if acc.email == email:
                             camel = _get_camel_client(acc)
                             await camel.ensure_cookie(http_client)
-                            await camel.delete_conversation(session_id)
+                            ok = await camel.delete_conversation(http_client, session_id)
+                            print(f"  {'✓' if ok else '✗'} deleted {session_id} for {email}")
                             break
-                except Exception:
-                    pass
+                except Exception as e:
+                    print(f"[Cleanup] error deleting {session_id}: {e}")
 
     asyncio.run(_run())
 

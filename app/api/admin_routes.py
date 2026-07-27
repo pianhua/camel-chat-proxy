@@ -27,12 +27,15 @@ async def get_admin_config(x_admin_password: Optional[str] = Header(None, alias=
 async def set_admin_config(request: Request, x_admin_password: Optional[str] = Header(None, alias="x-admin-password")):
     verify_admin(x_admin_password)
     config_manager.update_config(await request.json())
+    _usage_cache["data"] = None
+    _usage_cache["time"] = 0
     return {"status": "ok", "config": config_manager.get_config()}
 
 
 @router.post("/admin/login")
-async def admin_login(request: Request):
+async def admin_login(request: Request, x_admin_password: Optional[str] = Header(None, alias="x-admin-password")):
     """手动触发指定账号登录（body 可选 {"email": "..."}），面板已带管理密码即可。"""
+    verify_admin(x_admin_password)
     try:
         body = await request.json()
     except Exception:
@@ -79,11 +82,14 @@ async def test_accounts(x_admin_password: Optional[str] = Header(None, alias="x-
     results = []
     for acc in config_manager.config.camel_accounts:
         camel = get_camel_client(acc)
-        await camel.ensure_cookie(http)
-        ok = await camel.test_connection(http)
-        acc.is_valid = ok
-        acc.last_test = time.strftime("%m-%d %H:%M") if ok else acc.last_test
-        results.append({"email": acc.email, "ok": ok})
+        try:
+            await camel.ensure_cookie(http)
+            ok = await camel.test_connection(http)
+            acc.is_valid = ok
+            acc.last_test = time.strftime("%m-%d %H:%M") if ok else acc.last_test
+            results.append({"email": acc.email, "ok": ok})
+        except Exception as e:
+            results.append({"email": acc.email, "ok": False, "error": str(e)})
     config_manager.save()
     return {"status": "ok", "results": results}
 
@@ -131,7 +137,7 @@ async def health():
         "login_time": acc.login_time,
     } for acc in config_manager.config.camel_accounts]
     from .openai_routes import _model_cache
-    return {"status": "ok", "accounts": accounts, "model_count": len(_model_cache) if _model_cache else 0}
+    return {"status": "ok", "accounts": accounts, "model_count": len(_model_cache) if _model_cache else 0, "models_cached": _model_cache is not None}
 
 
 @router.get("/")

@@ -160,8 +160,10 @@ async def images_generations(request: Request):
             prior_images.append(du)
 
     account, camel = await pick_ready_account(http)
+    session_id = await session_pool.get_session(http, camel, model, account.email)
     try:
-        urls = await camel.generate_image(http, prompt=prompt, model=model, size=size, n=n, prior_images=prior_images)
+        urls = await camel.generate_image(http, prompt=prompt, model=model, size=size, n=n,
+                                          prior_images=prior_images, session_id=session_id)
     except CamelAPIError as e:
         raise HTTPException(status_code=e.status_code, detail={"error": {"message": str(e)}})
 

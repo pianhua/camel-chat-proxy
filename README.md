@@ -88,6 +88,8 @@ start.bat         # Windows
 
 ## 📡 API 端点
 
+> 📖 详细调用文档（请求/响应样例、多模态、错误码、SDK 示例）：[docs/API.md](docs/API.md)
+
 | 端点 | 方法 | 协议 | 说明 |
 |------|------|------|------|
 | `/v1/models` | GET | OpenAI | 列出可用模型（自动发现，1h 缓存） |

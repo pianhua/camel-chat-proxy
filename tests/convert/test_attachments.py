@@ -44,3 +44,17 @@ async def test_remote_text_file_via_parse_file():
 def test_is_image_mime():
     assert is_image_mime("image/png")
     assert not is_image_mime("text/plain")
+
+
+async def test_file_to_text_remote_without_http_returns_none():
+    from app.convert.attachments import resolve_file_to_text
+    assert await resolve_file_to_text(None, object(), "https://example.com/a.txt") is None
+
+
+def test_posix_file_uri_preserved(tmp_path):
+    from app.convert.attachments import _read_local
+    p = tmp_path / "f.txt"
+    p.write_bytes(b"hi")
+    # 用 file:/// + 绝对路径模拟 POSIX 风格 URI（Windows 上 tmp_path 带盘符，单独断言 POSIX 分支逻辑）
+    got = _read_local("file:///" + str(p).replace("\\", "/"))
+    assert got is not None and got[1] == b"hi"

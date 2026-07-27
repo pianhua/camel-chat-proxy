@@ -4,6 +4,7 @@ import base64
 import os
 import re
 from typing import Optional
+from urllib.parse import unquote
 
 import httpx
 
@@ -34,6 +35,10 @@ def _read_local(path: str) -> tuple[str, bytes, str] | None:
     """返回 (文件名, 内容, mime)；失败 None。"""
     if path.startswith("file:///"):
         path = path[8:]
+        # Windows 盘符路径 file:///C:/x → C:/x；POSIX file:///etc/x → /etc/x
+        if not re.match(r"^[A-Za-z]:[/\\]", path):
+            path = "/" + path
+    path = unquote(path)
     path = os.path.normpath(path)
     if not os.path.exists(path):
         print(f"[Attach] Local file not found: {path}")
@@ -72,7 +77,7 @@ async def resolve_image_to_data_url(http: Optional[httpx.AsyncClient], url: str)
 
 async def resolve_file_to_text(http, camel, url: str) -> Optional[str]:
     """文件 → 经 /api/chat/parse-file 解析为文本。图片返回 None（走 resolve_image_to_data_url）。"""
-    got = _read_local(url) if _is_local_path(url) else await _read_remote(http, url)
+    got = _read_local(url) if _is_local_path(url) else (await _read_remote(http, url) if http else None)
     if not got:
         return None
     name, content, mime = got

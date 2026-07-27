@@ -74,6 +74,10 @@ class ConfigManager:
             CamelAccount(**{k: v for k, v in acc.items() if k in CamelAccount.__dataclass_fields__})
             for acc in data.get("camel_accounts", [])
         ]
+        try:
+            rotate = int(data.get("session_rotate_turns", 10))
+        except (TypeError, ValueError):
+            rotate = 10
         return Config(
             api_keys=data.get("api_keys", "sk-camel"),
             admin_password=data.get("admin_password", "admin"),
@@ -81,7 +85,7 @@ class ConfigManager:
             models=data.get("models", []),
             web_search=data.get("web_search", False),
             refresh_interval=data.get("refresh_interval", 21600),
-            session_rotate_turns=int(data.get("session_rotate_turns", 10)),
+            session_rotate_turns=rotate,
         )
 
     def load(self):
@@ -105,8 +109,10 @@ class ConfigManager:
                 print(f"保存配置失败: {e}")
 
     def validate_api_key(self, key: str) -> bool:
+        if not key or not key.strip():
+            return False
         with self.lock:
-            return key in [k.strip() for k in self.config.api_keys.split(",")]
+            return key.strip() in [k.strip() for k in self.config.api_keys.split(",") if k.strip()]
 
     def get_next_account(self, require_valid: bool = True) -> Optional[CamelAccount]:
         with self.lock:

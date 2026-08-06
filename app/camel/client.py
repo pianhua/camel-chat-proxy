@@ -141,6 +141,9 @@ class CamelClient:
                 "size": size,
                 "n": n,
                 "priorImages": prior_images or [],
+                # 浏览器实测生图 payload 也带这两个消息 ID
+                "userMessageId": new_uuid(),
+                "assistantMessageId": new_uuid(),
             },
             timeout=300.0,
         )

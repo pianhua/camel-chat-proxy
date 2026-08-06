@@ -36,6 +36,24 @@ IMAGE_MODEL_MAP = {
     "gemini-3-pro-image-preview": "gemini-3-pro-image-preview",
 }
 
+# CaMeL 不暴露模型上下文上限，此处为社区常识默认值，可被 config.model_contexts 覆盖。
+MODEL_CONTEXTS = {
+    "claude-opus-4-8": 200000, "claude-opus-4-7": 200000, "claude-opus-4-6": 200000,
+    "claude-sonnet-4-6": 200000, "claude-sonnet-5": 200000, "claude-haiku-4-5": 200000,
+    "claude-fable-5": 200000,
+    "gpt-5.5-pro": 400000, "gpt-5.5": 400000, "gpt-5.4": 400000, "gpt-4o": 128000, "gpt-5.6-sol": 400000,
+    "gemini-3.1-pro": 1000000, "gemini-3.5-flash": 1000000,
+    "deepseek-v3.2": 128000, "deepseek-r1": 128000, "deepseek-v4-pro": 128000,
+    "kimi-k3": 128000,
+    "gpt-image-2": 0, "gemini-3-pro-image-preview": 0,
+}
+
+
+def _context_window(model: str) -> int:
+    """模型上下文上限：config.model_contexts 优先，其次内置默认表。"""
+    overrides = config_manager.config.model_contexts or {}
+    return int(overrides.get(model, MODEL_CONTEXTS.get(model, 0)) or 0)
+
 
 async def discover_models(http) -> list:
     global _model_cache, _model_cache_time
@@ -51,7 +69,11 @@ async def discover_models(http) -> list:
     try:
         raw = await client.get_models(http)
         result = [
-            {"id": m["id"], "object": "model", "created": 0, "owned_by": m.get("providerId", "CaMeL")}
+            {
+                "id": m["id"], "object": "model", "created": 0,
+                "owned_by": m.get("providerId", "CaMeL"),
+                "context_window": _context_window(m["id"]),
+            }
             for m in raw if m.get("type") in ("chat", "image")
         ]
         _model_cache, _model_cache_time = result, now
@@ -91,8 +113,18 @@ async def chat_completions(request: Request):
     session_id = await session_pool.get_session(http, camel, model, account.email)
     web_search = bool(body.get("web_search", config_manager.config.web_search))
 
+    # 专家模式采样参数透传（CaMeL /api/chat/completion 支持 sampling 对象，浏览器实测）
+    sampling = {}
+    for k, v in (("temperature", body.get("temperature")), ("top_p", body.get("top_p")),
+                 ("max_tokens", body.get("max_tokens")), ("frequency_penalty", body.get("frequency_penalty")),
+                 ("presence_penalty", body.get("presence_penalty"))):
+        if v is not None:
+            sampling[k] = v
+    message_mode = body.get("message_mode", config_manager.config.message_mode or "auto")
+
     try:
-        payload = await build_payload(http, camel, messages, model, session_id, web_search)
+        payload = await build_payload(http, camel, messages, model, session_id, web_search,
+                                      sampling=sampling or None, message_mode=message_mode)
     except CamelAPIError as e:
         raise HTTPException(status_code=e.status_code, detail={"error": {"message": str(e)}})
 
@@ -132,7 +164,19 @@ async def chat_completions(request: Request):
     return {
         "id": f"chatcmpl-{request_id}", "object": "chat.completion", "created": 0, "model": model,
         "choices": [{"index": 0, "message": {"role": "assistant", "content": text}, "finish_reason": "stop"}],
-        "usage": {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0},
+        "usage": _estimate_usage(payload, text),
+    }
+
+
+def _estimate_usage(payload: dict, output_text: str) -> dict:
+    """usage 估算：上游不返回 token 统计，按字符数粗估（中英混合约 4 字符/token）。"""
+    prompt_chars = sum(len(str(m.get("content", ""))) for m in payload.get("messages", []))
+    prompt_tokens = max(1, prompt_chars // 4)
+    completion_tokens = max(0, len(output_text or "") // 4)
+    return {
+        "prompt_tokens": prompt_tokens,
+        "completion_tokens": completion_tokens,
+        "total_tokens": prompt_tokens + completion_tokens,
     }
 
 

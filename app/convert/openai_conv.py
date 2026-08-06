@@ -11,6 +11,11 @@ OPENAI_SIZE_TO_CAMEL = {
     "1024x1792": "9:16",
 }
 
+# 实测不读取 messages 数组历史（只认最后一条 user + system）的模型，需折叠消息保上下文。
+# 依据 2026-08-06 浏览器实测：claude-sonnet-4-6 / claude-haiku-4-5 忽略数组历史，
+# 其余模型（opus 4.6/4.7/4.8、sonnet-5、fable-5、kimi-k3、gpt-5.5、gemini 系、deepseek-v4-pro）完整读取。
+COMPACT_MODELS = {"claude-sonnet-4-6", "claude-haiku-4-5"}
+
 _MD_IMAGE_RE = re.compile(r"!\[.*?\]\((https?://[^\)]+)\)")
 _FILE_RE = re.compile(r"\[📎.*?\]\(([^\)]+)\)")
 
@@ -24,6 +29,26 @@ def extract_system(messages: list) -> str:
                 i.get("text", "") for i in c if isinstance(i, dict) and i.get("type") == "text"
             ))
     return "\n".join(p for p in parts if p)
+
+
+def _needs_compact(model: str, message_mode: str) -> bool:
+    """auto：按实测特例模型集合决定；native：保持数组；compact：一律折叠。"""
+    if message_mode == "native":
+        return False
+    if message_mode == "compact":
+        return True
+    return model in COMPACT_MODELS
+
+
+def fold_to_text(convo: list) -> str:
+    """把 user/assistant 消息折叠成纯文本（DS2API 风格 <User>:/<Assistant>: 角色标记）。
+    供不读数组历史的特例模型使用，历史作为文本注入最后一条 user。"""
+    blocks = []
+    for m in convo:
+        role = m.get("role")
+        tag = {"user": "User", "assistant": "Assistant"}.get(role, str(role))
+        blocks.append(f"<{tag}>:\n{m.get('content', '')}")
+    return "\n\n".join(blocks)
 
 
 async def _convert_one(http, camel, msg: dict) -> tuple[dict, bool, str]:
@@ -79,7 +104,8 @@ async def _convert_one(http, camel, msg: dict) -> tuple[dict, bool, str]:
     return {"role": role, "content": text}, bool(attachments or file_texts), pure_text
 
 
-async def build_payload(http, camel, messages: list, model: str, session_id: str, web_search: bool = False) -> dict:
+async def build_payload(http, camel, messages: list, model: str, session_id: str, web_search: bool = False,
+                        sampling: dict | None = None, message_mode: str = "auto") -> dict:
     """OpenAI messages → CaMeL completion payload（完整新对象，不污染入参）。"""
     system = extract_system(messages)
     convo, has_attach, user_text = [], False, ""
@@ -94,7 +120,10 @@ async def build_payload(http, camel, messages: list, model: str, session_id: str
     if system:
         convo.insert(0, {"role": "system", "content": system})
 
-    return {
+    if _needs_compact(model, message_mode) and len(convo) > 1:
+        convo = _compact_convo(convo, system)
+
+    payload = {
         "messages": convo,
         "model": model,
         "providerId": "CaMeL",
@@ -105,4 +134,38 @@ async def build_payload(http, camel, messages: list, model: str, session_id: str
         "hasAttachments": has_attach,
         "hasCustomSystemPrompt": bool(system),
         "webSearch": web_search,
+        "useCamelGroup": False,
+        "camelGroup": "default",
     }
+    # 专家模式采样参数（浏览器实测 /api/chat/completion 支持 sampling 对象）
+    if sampling:
+        payload["sampling"] = sampling
+    return payload
+
+
+def _compact_convo(convo: list, system: str) -> list:
+    """折叠消息：system 独立保留，user/assistant 历史文本化后并入最后一条 user。
+    特例模型只读最后一条 user + system，折叠后可恢复完整上下文（已实测验证）。"""
+    others = [m for m in convo if m["role"] != "system"]
+    if not others:
+        return convo
+    # 保证最后一条是 user：若末尾是 assistant，则并入历史一起文本化
+    if others[-1]["role"] == "user":
+        last = others[-1]
+        history = others[:-1]
+        last_text = last["content"]
+    else:
+        last = None
+        history = others
+        last_text = ""
+    folded = fold_to_text(history)
+    parts = []
+    if folded:
+        parts.append("<对话历史>\n" + folded)
+    if last_text:
+        parts.append("<当前消息>\n" + last_text)
+    text = "\n\n".join(parts)
+    out = [{"role": "user", "content": text}]
+    if system:
+        out.insert(0, {"role": "system", "content": system})
+    return out

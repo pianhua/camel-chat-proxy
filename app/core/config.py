@@ -34,6 +34,8 @@ class Config:
     web_search: bool = False
     refresh_interval: int = 21600
     session_rotate_turns: int = 10  # 每个 CaMeL 会话最多承载的用户消息数
+    message_mode: str = "auto"  # auto/native/compact：auto 按模型实测集合自动折叠
+    model_contexts: dict = field(default_factory=dict)  # 模型上下文上限覆盖（OpenAI 格式 context_window）
 
     def to_dict(self):
         d = {
@@ -43,9 +45,12 @@ class Config:
             "web_search": self.web_search,
             "refresh_interval": self.refresh_interval,
             "session_rotate_turns": self.session_rotate_turns,
+            "message_mode": self.message_mode,
         }
         if self.models:
             d["models"] = self.models
+        if self.model_contexts:
+            d["model_contexts"] = self.model_contexts
         return d
 
     def to_save_dict(self):
@@ -59,9 +64,12 @@ class Config:
             "web_search": self.web_search,
             "refresh_interval": self.refresh_interval,
             "session_rotate_turns": self.session_rotate_turns,
+            "message_mode": self.message_mode,
         }
         if self.models:
             d["models"] = self.models
+        if self.model_contexts:
+            d["model_contexts"] = self.model_contexts
         return d
 
 
@@ -90,6 +98,8 @@ class ConfigManager:
             web_search=data.get("web_search", False),
             refresh_interval=data.get("refresh_interval", 21600),
             session_rotate_turns=rotate,
+            message_mode=data.get("message_mode", "auto"),
+            model_contexts=data.get("model_contexts", {}) or {},
         )
 
     def load(self):

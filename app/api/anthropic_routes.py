@@ -38,6 +38,16 @@ async def anthropic_messages(request: Request, x_api_key: Optional[str] = Header
     stream = bool(body.get("stream", False))
     web_search = bool(body.get("web_search", config_manager.config.web_search))
 
+    # Anthropic 采样参数 → CaMeL sampling（浏览器实测专家模式支持）
+    sampling = {}
+    for k, v in (("temperature", body.get("temperature")), ("max_tokens", body.get("max_tokens")),
+                 ("top_p", body.get("top_p")), ("top_k", body.get("top_k")),
+                 ("frequency_penalty", body.get("frequency_penalty")),
+                 ("presence_penalty", body.get("presence_penalty"))):
+        if v is not None:
+            sampling[k] = v
+    message_mode = body.get("message_mode", config_manager.config.message_mode or "auto")
+
     openai_messages = to_openai_messages(messages, body.get("system", ""))
 
     http = await get_http_client()
@@ -48,7 +58,8 @@ async def anthropic_messages(request: Request, x_api_key: Optional[str] = Header
 
     session_id = await session_pool.get_session(http, camel, model, account.email)
     try:
-        payload = await build_payload(http, camel, openai_messages, model, session_id, web_search)
+        payload = await build_payload(http, camel, openai_messages, model, session_id, web_search,
+                                      sampling=sampling or None, message_mode=message_mode)
     except CamelAPIError as e:
         raise HTTPException(status_code=e.status_code, detail=_err("api_error", str(e)))
     session_pool.record_turn(account.email)

@@ -323,6 +323,21 @@ curl http://localhost:5050/admin/usage -H "x-admin-password: admin"
 
 某账号失败时对应行返回 `{"email": "...", "error": "..."}`。
 
+### `GET /admin/logs`
+
+返回最近日志（内存环形缓冲，最多 300 条），供管理面板实时查看：
+
+```bash
+curl http://localhost:5050/admin/logs -H "x-admin-password: admin"
+```
+
+```json
+{
+  "status": "ok",
+  "logs": ["17:16:01 INFO [main] [Startup] Models pre-loaded", "..."]
+}
+```
+
 ### `GET /health`（无需鉴权）
 
 ```json

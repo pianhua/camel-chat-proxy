@@ -2,6 +2,8 @@
 config.json
 .env
 accounts.json
+# 账号池文档含明文密码，仅限本地
+docs/账号池文档.md
 
 # Python
 __pycache__/

@@ -12,5 +12,10 @@
   ],
   "web_search": false,
   "refresh_interval": 21600,
-  "session_rotate_turns": 10
+  "session_rotate_turns": 10,
+  "message_mode": "auto",
+  "model_contexts": {},
+  "max_inflight_per_account": 1,
+  "account_cooldown_seconds": 120,
+  "account_acquire_timeout": 30
 }

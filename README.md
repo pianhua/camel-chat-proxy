@@ -26,11 +26,13 @@ SillyTavern · RikkaHub · 任意 OpenAI/Anthropic 客户端均可接入
 | 👥 **多账号轮询** | 负载均衡 + 自动故障转移 |
 | 🔄 **会话智能轮换** | 每 10 句（可配置）自动换会话，标题自动同步，行为贴近真人 |
 | 🥷 **隐蔽优先** | 不轮询上游、不删会话、标准 UUID，最大限度模拟真实浏览器用户 |
+| 🛡️ **账号池并发控制** | 每账号并发槽位 + 排队等待 + 失败冷却自动恢复，高并发不硬打账号 |
+| 🔁 **自动重试换号** | 上游 5xx 自动标记冷却并换账号重试一次 |
 | 🎚️ **采样参数透传** | `temperature` / `top_p` / `max_tokens` / `frequency_penalty` / `presence_penalty` 完整送达上游（专家模式） |
 | 🧩 **消息自适应折叠** | `auto` 模式按模型实测行为自动折叠历史（`claude-sonnet-4-6` / `claude-haiku-4-5`），其余模型保持原生数组 |
 | 📐 **模型上下文上报** | `/v1/models` 返回 `context_window`（内置映射表，可用 `model_contexts` 覆盖） |
 | 📊 **用量监控** | 管理面板一键查看账号额度与联网搜索剩余 |
-| 🖥️ **暖色管理面板** | 单文件零依赖 WebUI，账号/配置/用量全可视化 |
+| 🖥️ **暖色管理面板** | 单文件零依赖 WebUI：总览/账号/配置/模型/日志 五 Tab，实时日志、账号增删、用量查看 |
 | 🧱 **分层架构** | core / camel / convert / api 四层单向依赖，29 个单元测试护航 |
 
 ## 🚀 快速开始
@@ -69,6 +71,9 @@ python main.py
 | `refresh_interval` | `21600` | Cookie 有效期（秒），到期自动重新登录 |
 | `message_mode` | `auto` | 消息模式：`auto`（按模型实测自动折叠）/ `native`（恒数组）/ `compact`（恒折叠） |
 | `model_contexts` | `{}` | 模型上下文上限覆盖，如 `{"claude-opus-4-7": 200000}` |
+| `max_inflight_per_account` | `1` | 账号池：每账号并发请求槽位上限（隐蔽优先，建议 1） |
+| `account_cooldown_seconds` | `120` | 账号池：失败冷却秒数，到期自动恢复，无需手动登录 |
+| `account_acquire_timeout` | `30` | 账号池：无可用账号时排队等待秒数，超时返回 503 |
 
 > ⚠️ `config.json` 明文存密码，已在 `.gitignore` 排除，**切勿提交**。
 

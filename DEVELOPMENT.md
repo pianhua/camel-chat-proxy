@@ -130,11 +130,17 @@ start.bat            # Windows CMD
 - `update_config(new_config)`：合并式更新配置并落盘，面板改配置走这里。
 - `save()` / `load()`：写/读 `config.json`；`to_dict()` 输出时密码会 mask。
 
-### 6.2 `app/core/http.py` / `auth.py` / `logger.py`
+### 6.2 `app/core/http.py` / `auth.py` / `logger.py` / `account_pool.py`
 
 - `get_http_client()`：全局共享 httpx AsyncClient（HTTP/2、超时 600s、连接池 50），**所有上游请求都用它**，不要各自 new。
 - `verify_admin()`：管理端点鉴权（`x-admin-password` 头）。
-- `get_logger(name)`：统一日志入口，格式 `时间 级别 [模块] 消息`。
+- `get_logger(name)`：统一日志入口；`get_recent_logs(n)` 返回内存环形缓冲最近 n 条（供 `/admin/logs`）。
+- `account_pool`：账号池（并发槽位 + 排队 + 冷却），参考 ds2api 设计：
+  - `acquire(exclude=set)`：排队获取可用账号（跳过冷却中/槽位满/被排除的），超时返回 None；
+  - `release(account)`：释放槽位（路由层 finally / 流式生成器 finally 调用）；
+  - `mark_failed(account)`：标记失败进入冷却（`account_cooldown_seconds` 秒后自动恢复）；
+  - `mark_ok(account)`：成功清除冷却；
+  - 相关配置：`max_inflight_per_account` / `account_cooldown_seconds` / `account_acquire_timeout`。
 
 ### 6.3 `app/camel/login.py`
 
@@ -195,9 +201,9 @@ start.bat            # Windows CMD
 
 | 文件 | 端点 |
 |------|------|
-| `openai_routes.py` | `GET /v1/models`（1h 缓存）、`POST /v1/chat/completions`（流式/非流式/多模态）、`POST /v1/images/generations` |
-| `anthropic_routes.py` | `POST /v1/messages`（流式 SSE 完整事件序列） |
-| `admin_routes.py` | `GET/POST /admin/config`、`POST /admin/login`、`/admin/refresh-cookies`、`/admin/test-accounts`、`/admin/refresh-models`、`GET /admin/usage`（30min 缓存）、`GET /health`、`GET /` |
+| `openai_routes.py` | `GET /v1/models`（1h 缓存）、`POST /v1/chat/completions`（流式/非流式/多模态，5xx 自动换号重试）、`POST /v1/images/generations` |
+| `anthropic_routes.py` | `POST /v1/messages`（流式 SSE 完整事件序列，5xx 自动换号重试） |
+| `admin_routes.py` | `GET/POST /admin/config`、`POST /admin/login`、`/admin/refresh-cookies`、`/admin/test-accounts`、`/admin/refresh-models`、`GET /admin/usage`（30min 缓存）、`GET /admin/logs`（最近 300 条）、`GET /health`、`GET /`（管理面板） |
 | `deps.py` | `check_api_key`、`pick_ready_account`（取号 + 确保 cookie 就绪）、`get_camel_client`（按 email 缓存实例） |
 
 **OpenAI 流式**：每 chunk 包装成 `chat.completion.chunk`，错误以 error chunk + `[DONE]` 结束。

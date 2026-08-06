@@ -260,9 +260,7 @@ curl -X POST http://localhost:5050/v1/messages \
 }
 ```
 
-**流式响应**：SSE 事件 `content_block_delta`（文本增量）→ `message_stop`；出错时发 `error` 事件。
-
-> ⚠️ 已知限制：流式目前只发 `content_block_delta` / `message_stop` 两类事件，不含 `message_start` 等完整事件序列。官方 Anthropic SDK 严格模式下可能校验失败，SillyTavern/RikkaHub 实测正常。
+**流式响应**：完整 SSE 事件序列 `message_start` → `content_block_start` → `content_block_delta`（文本增量）→ `content_block_stop` → `message_delta` → `message_stop`；出错时发 `error` 事件。
 
 ---
 
@@ -377,7 +375,7 @@ msg = client.messages.create(
 print(msg.content[0].text)
 ```
 
-> 注意官方 SDK 流式模式的已知限制（见第 3 节）。
+官方 SDK 的流式模式同样可用（事件序列完整）。
 
 ### JavaScript（fetch 流式）
 

@@ -206,7 +206,7 @@ camel_chat_proxy/
 
 ```bash
 pip install -r requirements.txt
-python -m pytest -v      # 29 个单元测试
+python -m pytest -v      # 29 个单元测试（tests/ 下 core / camel / convert / api 四组）
 ```
 
 ## 📋 可用模型

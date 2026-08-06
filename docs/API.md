@@ -80,7 +80,12 @@ curl http://localhost:5050/v1/models -H "Authorization: Bearer sk-camel"
 | `messages` | array | 是 | OpenAI 消息数组（system/user/assistant） |
 | `stream` | bool | 否 | 默认 `false` |
 | `web_search` | bool | 否 | 联网搜索，默认取全局配置 |
-| `temperature` / `top_p` / `max_tokens` | - | 否 | 接受但**不生效**（上游网页端不支持） |
+| `temperature` / `top_p` / `max_tokens` / `frequency_penalty` / `presence_penalty` | number | 否 | 采样参数，透传上游 `sampling`（CaMeL 专家模式支持） |
+| `message_mode` | string | 否 | `auto`（默认，按模型实测折叠）/ `native` / `compact` |
+
+> **消息折叠说明**：`claude-sonnet-4-6` / `claude-haiku-4-5` 实测不读取 messages 数组历史（只认最后一条 user + system）。`auto` 模式下代理自动把 system + 历史折叠进最后一条 user（DS2API 风格角色标记），其余模型保持原生数组。
+
+> **usage 说明**：上游不返回 token 统计，代理按完整 prompt/输出字符数粗估（约 4 字符/token）。
 
 ```bash
 curl -X POST http://localhost:5050/v1/chat/completions \
@@ -212,9 +217,11 @@ curl -X POST http://localhost:5050/v1/images/generations \
 | `model` | string | 是 | 模型 ID；旧名自动映射（见下表） |
 | `messages` | array | 是 | Anthropic 消息数组，content 支持字符串或 block 数组 |
 | `system` | string/array | 否 | 系统提示 |
-| `max_tokens` | int | 否 | 接受但不生效 |
+| `max_tokens` | int | 否 | 透传上游（专家模式采样） |
+| `temperature` / `top_p` / `top_k` / `frequency_penalty` / `presence_penalty` | number | 否 | 透传上游 `sampling` |
 | `stream` | bool | 否 | 默认 `false` |
 | `web_search` | bool | 否 | 默认取全局配置 |
+| `message_mode` | string | 否 | `auto`（默认）/ `native` / `compact` |
 
 **模型名映射：**
 
@@ -425,6 +432,6 @@ while (true) {
 1. **会话轮换**：代理按账号维护一个 CaMeL 会话，每 `session_rotate_turns`（默认 10）句用户消息自动换新。CaMeL 网页端会看到会话堆积，属正常现象（与真人使用一致）。会话标题会取首句前 20 字自动同步。
 2. **多账号轮询**：每个请求轮询选取下一个有效账号；某账号登录失败会标记失效并跳过。
 3. **Cookie 生命周期**：有效期 6 小时，到期自动用 Playwright 重新登录，无需人工干预。
-4. **参数透传限制**：`temperature`、`top_p`、`max_tokens`、`presence_penalty` 等采样参数会被接受但**不生效**（上游网页端不支持）。
+4. **采样参数**：`temperature` / `top_p` / `max_tokens` / `frequency_penalty` / `presence_penalty` 会透传上游 `sampling` 对象（CaMeL 专家模式支持）；`top_k` 等未声明参数仍被忽略。
 5. **附件安全**：`image_url` / `file_url` 允许本地路径，意味着任何持有 API Key 的客户端都能让服务端读取本地文件——**请勿将代理无鉴权暴露到公网**。
 6. **不轮询上游**：除聊天/生图请求本身外，代理不会主动请求 CaMeL（模型列表 1h 缓存、用量 30min 缓存且仅手动触发），以降低封号风险。

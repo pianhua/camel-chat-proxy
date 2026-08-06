@@ -26,6 +26,9 @@ SillyTavern · RikkaHub · 任意 OpenAI/Anthropic 客户端均可接入
 | 👥 **多账号轮询** | 负载均衡 + 自动故障转移 |
 | 🔄 **会话智能轮换** | 每 10 句（可配置）自动换会话，标题自动同步，行为贴近真人 |
 | 🥷 **隐蔽优先** | 不轮询上游、不删会话、标准 UUID，最大限度模拟真实浏览器用户 |
+| 🎚️ **采样参数透传** | `temperature` / `top_p` / `max_tokens` / `frequency_penalty` / `presence_penalty` 完整送达上游（专家模式） |
+| 🧩 **消息自适应折叠** | `auto` 模式按模型实测行为自动折叠历史（`claude-sonnet-4-6` / `claude-haiku-4-5`），其余模型保持原生数组 |
+| 📐 **模型上下文上报** | `/v1/models` 返回 `context_window`（内置映射表，可用 `model_contexts` 覆盖） |
 | 📊 **用量监控** | 管理面板一键查看账号额度与联网搜索剩余 |
 | 🖥️ **暖色管理面板** | 单文件零依赖 WebUI，账号/配置/用量全可视化 |
 | 🧱 **分层架构** | core / camel / convert / api 四层单向依赖，29 个单元测试护航 |
@@ -64,6 +67,8 @@ python main.py
 | `session_rotate_turns` | `10` | 每个 CaMeL 会话承载的用户消息数上限，到达后自动换新会话 |
 | `web_search` | `false` | 全局联网搜索开关（可被请求级 `web_search` 覆盖） |
 | `refresh_interval` | `21600` | Cookie 有效期（秒），到期自动重新登录 |
+| `message_mode` | `auto` | 消息模式：`auto`（按模型实测自动折叠）/ `native`（恒数组）/ `compact`（恒折叠） |
+| `model_contexts` | `{}` | 模型上下文上限覆盖，如 `{"claude-opus-4-7": 200000}` |
 
 > ⚠️ `config.json` 明文存密码，已在 `.gitignore` 排除，**切勿提交**。
 

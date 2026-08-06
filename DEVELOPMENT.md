@@ -114,6 +114,8 @@ start.bat            # Windows CMD
 | `web_search` | 全局联网搜索开关（可在请求中覆盖） |
 | `refresh_interval` | Cookie 本地缓存 TTL（秒），默认 6h；**运行时修改立即生效**（`CamelClient.ensure_cookie` 读取此值） |
 | `session_rotate_turns` | 每个 CaMeL 会话承载的用户消息数上限，到达后自动换新会话（默认 10） |
+| `message_mode` | 消息模式：`auto`（默认，按模型实测自动折叠）/ `native`（恒数组）/ `compact`（恒折叠） |
+| `model_contexts` | 模型上下文上限覆盖，如 `{"claude-opus-4-7": 200000}`（`/v1/models` 返回 `context_window`） |
 
 > `config.json` 已加入 `.gitignore`，**切勿提交到 Git**。
 
@@ -168,12 +170,14 @@ start.bat            # Windows CMD
 
 ### 6.6 `app/convert/openai_conv.py`
 
-`build_payload(http, camel, messages, model, session_id, web_search)`：OpenAI messages → CaMeL completion payload。
+`build_payload(http, camel, messages, model, session_id, web_search, sampling=None, message_mode="auto")`：OpenAI messages → CaMeL completion payload。
 
 - `extract_system()`：汇总所有 system 消息，作为 CaMeL `system` 消息插到最前。
 - `_convert_one()`：逐条转换 user/assistant 消息；`content` 数组拆分为 text / image_url / file_url；图片经附件管线转 data URL 并以 `![本地图片](data:...)` 拼入文本；文件经 `parse-file` 解析成文本拼入。
 - payload 里 `userMessageId` / `assistantMessageId` 用标准 UUID（CaMeL 要求 36 位）。
 - 返回对象带 `userText`（纯文本，供标题同步用）与 `hasAttachments`。
+- **采样参数透传**：`sampling` 非空时写入 `payload["sampling"]`（专家模式支持 temperature/topP/topK/maxTokens/frequencyPenalty/presencePenalty）。
+- **消息自适应折叠**：`COMPACT_MODELS = {"claude-sonnet-4-6", "claude-haiku-4-5"}` 是 2026-08-06 浏览器实测**不读数组历史**的模型（只认最后一条 user + system）。`auto` 模式下命中集合的模型走 `_compact_convo()`：system 独立保留，user/assistant 历史用 `<User>:`/`<Assistant>:` 角色标记折叠进最后一条 user（参考 ds2api 的 prompt 拼装）。其余模型保持原生数组。
 
 ### 6.7 `app/convert/anthropic_conv.py`
 
@@ -250,7 +254,7 @@ curl -s http://localhost:5050/health
 ### 8.2 运行单元测试
 
 ```bash
-python -m pytest -v     # 29 个测试，覆盖 core / camel / convert / api
+python -m pytest -v     # 33 个测试，覆盖 core / camel / convert / api
 ```
 
 ### 8.3 测试聊天

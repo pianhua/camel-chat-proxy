@@ -3,417 +3,327 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>CaMeL Chat Proxy — 管理面板</title>
+<title>CaMeL Chat Proxy · 管理面板</title>
 <style>
 :root{
-  --bg:#f7f5f0; --card:#fffdf9; --ink:#3d3929; --ink-soft:#8a8272;
-  --accent:#d97757; --accent-ink:#fff; --ok:#6b9e78; --err:#c0564f; --line:#e8e2d6;
+  --bg:#faf3ea; --bg2:#f3e9dc; --card:#fffdf9; --ink:#4a3826; --ink2:#8a7157;
+  --primary:#c98a5e; --primary-d:#b06f42; --accent:#e0a96d;
+  --ok:#3d8b5f; --warn:#c98a2d; --bad:#c2554a; --line:#e8d9c6;
+  --radius:14px; --shadow:0 2px 10px rgba(90,60,20,.07);
 }
-*{margin:0;padding:0;box-sizing:border-box}
-body{font-family:-apple-system,system-ui,"Segoe UI",sans-serif;background:var(--bg);color:var(--ink);line-height:1.6}
-.container{max-width:920px;margin:0 auto;padding:20px}
-
-.topbar{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:20px}
-.topbar h1{font-size:22px;color:var(--ink)}
-.topbar .subtitle{color:var(--ink-soft);font-size:13px}
-.topbar .pw-box{display:flex;align-items:center;gap:8px}
-.topbar .pw-box label{font-size:13px;color:var(--ink-soft);white-space:nowrap}
-.topbar .pw-box input{width:180px}
-
-h2{font-size:17px;margin-bottom:14px;color:var(--ink)}
-.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:20px;margin-bottom:16px;box-shadow:0 1px 3px rgba(61,57,41,.08)}
-
-.form-group{margin-bottom:14px}
-label{display:block;color:var(--ink-soft);font-size:13px;margin-bottom:5px;font-weight:600}
-input,select{width:100%;padding:9px 12px;background:#fff;border:1px solid var(--line);border-radius:8px;color:var(--ink);font-size:14px;transition:border-color .15s}
-input:focus,select:focus{outline:none;border-color:var(--accent)}
-
-.btn{padding:9px 18px;border:none;border-radius:8px;font-size:14px;cursor:pointer;font-weight:600;transition:all .15s}
-.btn-primary{background:var(--accent);color:var(--accent-ink)}.btn-primary:hover{opacity:.88}
-.btn-ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}.btn-ghost:hover{border-color:var(--accent);color:var(--accent)}
-.btn-danger{background:transparent;color:var(--err);border:1px solid var(--line)}.btn-danger:hover{background:var(--err);color:#fff;border-color:var(--err)}
-.btn-sm{padding:5px 12px;font-size:12px}
-.row{display:flex;gap:10px;flex-wrap:wrap}
-.flex{display:flex;align-items:center;gap:8px}
-
-.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:16px}
-.stat{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;text-align:center;box-shadow:0 1px 3px rgba(61,57,41,.08)}
-.stat-value{font-size:26px;font-weight:700;color:var(--ink)}
-.stat-label{color:var(--ink-soft);font-size:12px;margin-top:2px}
-
-.dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:7px;vertical-align:middle}
-.dot-on{background:var(--ok)}
-.dot-off{background:#c9c2b2}
-
-.account-item{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 14px;background:#fff;border:1px solid var(--line);border-radius:10px;margin-bottom:8px;transition:border-color .15s}
-.account-item:hover{border-color:var(--accent)}
-.account-info{flex:1;min-width:0}
-.account-email{font-weight:600;font-size:14px}
-.account-meta{color:var(--ink-soft);font-size:12px;margin-top:3px}
-.account-actions{display:flex;gap:6px;flex-shrink:0}
-
-.badge{display:inline-block;padding:2px 9px;border-radius:10px;font-size:11px;font-weight:600}
-.badge-ok{background:#6b9e7818;color:var(--ok);border:1px solid #6b9e7840}
-.badge-fail{background:#c0564f18;color:var(--err);border:1px solid #c0564f40}
-
-.usage-item{padding:12px 14px;background:#fff;border:1px solid var(--line);border-radius:10px;margin-bottom:8px}
-.usage-item .kv{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:13px;color:var(--ink-soft);margin-top:4px}
-.usage-item .kv b{color:var(--ink);font-weight:600}
-
-.endpoint{border:1px solid var(--line);background:#fff;padding:8px 12px;border-radius:6px;margin:4px 0;font-family:ui-monospace,monospace;font-size:13px}
-code{background:#3d392912;padding:2px 6px;border-radius:4px;font-size:13px}
-.muted{color:var(--ink-soft);font-size:13px}
-.refresh-indicator{color:var(--ink-soft);font-size:12px;margin-left:8px}
-
-.toast{position:fixed;top:16px;right:16px;padding:12px 22px;border-radius:10px;color:#fff;font-size:14px;z-index:999;animation:fadeIn .2s;box-shadow:0 4px 14px rgba(61,57,41,.18)}
-.toast-success{background:var(--ok)}
-.toast-error{background:var(--err)}
-@keyframes fadeIn{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;background:linear-gradient(160deg,var(--bg),var(--bg2));color:var(--ink);min-height:100vh}
+header{background:var(--card);border-bottom:1px solid var(--line);padding:0 20px;height:60px;display:flex;align-items:center;gap:16px;position:sticky;top:0;z-index:50;box-shadow:var(--shadow)}
+.logo{display:flex;align-items:center;gap:10px;font-weight:700;font-size:18px;color:var(--primary-d);white-space:nowrap}
+.logo .cam{font-size:22px}
+nav{display:flex;gap:4px;flex:1;overflow-x:auto}
+nav button{background:none;border:none;padding:8px 14px;border-radius:10px;font-size:14px;color:var(--ink2);cursor:pointer;white-space:nowrap}
+nav button:hover{background:var(--bg);color:var(--primary-d)}
+nav button.active{background:var(--primary);color:#fff}
+.user-area{margin-left:auto;display:flex;align-items:center;gap:8px;color:var(--ink2);font-size:13px}
+main{max-width:1100px;margin:24px auto;padding:0 16px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:20px;margin-bottom:18px;box-shadow:var(--shadow)}
+.card h2{font-size:16px;margin-bottom:14px;color:var(--primary-d);display:flex;align-items:center;gap:8px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px}
+.stat{background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:14px}
+.stat .num{font-size:26px;font-weight:700;color:var(--primary-d)}
+.stat .lbl{font-size:12px;color:var(--ink2);margin-top:4px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;padding:9px 10px;color:var(--ink2);font-weight:600;border-bottom:2px solid var(--line)}
+td{padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:middle}
+tr:hover td{background:#fffaf2}
+.badge{display:inline-block;padding:2px 10px;border-radius:20px;font-size:12px;font-weight:600}
+.b-ok{background:#e4f3ea;color:var(--ok)} .b-bad{background:#fae6e2;color:var(--bad)} .b-warn{background:#faf0dc;color:var(--warn)}
+button.btn{background:var(--primary);color:#fff;border:none;padding:7px 14px;border-radius:9px;font-size:13px;cursor:pointer;transition:.15s}
+button.btn:hover{background:var(--primary-d)}
+button.btn.sm{padding:4px 10px;font-size:12px;border-radius:7px}
+button.btn.ghost{background:none;color:var(--primary-d);border:1px solid var(--primary);}
+button.btn.ghost:hover{background:#fdf1e3}
+button.btn.danger{background:var(--bad)} button.btn.danger:hover{background:#a94338}
+button.btn:disabled{opacity:.5;cursor:not-allowed}
+input[type=text],input[type=password],textarea,select{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:9px;font-size:13px;background:#fffdf9;color:var(--ink);font-family:inherit}
+textarea{font-family:ui-monospace,Consolas,monospace;font-size:12px;line-height:1.5;resize:vertical}
+.form-row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.form-row>*{flex:1;min-width:150px}
+.muted{color:var(--ink2);font-size:12px}
+.mono{font-family:ui-monospace,Consolas,monospace;font-size:12px}
+#toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#3d2f1f;color:#fff;padding:10px 22px;border-radius:10px;font-size:13px;opacity:0;transition:.25s;pointer-events:none;z-index:99;max-width:80vw}
+#toast.show{opacity:.95}
+#loginScreen{max-width:380px;margin:12vh auto;padding:30px;background:var(--card);border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow)}
+#loginScreen h1{font-size:20px;color:var(--primary-d);margin-bottom:6px}
+#loginScreen p{color:var(--ink2);font-size:13px;margin-bottom:18px}
+.hidden{display:none}
+.empty{padding:30px;text-align:center;color:var(--ink2);font-size:13px}
+#logsBox{background:#2b2118;color:#e8d9c6;border-radius:12px;padding:14px;font-family:ui-monospace,Consolas,monospace;font-size:12px;line-height:1.7;height:440px;overflow:auto}
+#logsBox .lwarn{color:#f0c36d} #logsBox .lerr{color:#f08a7a}
+.model-tag{display:inline-block;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:6px 12px;margin:4px;font-size:12px}
+.model-tag b{color:var(--primary-d)}
+.model-tag .ctx{color:var(--ink2);font-size:11px}
+@media(max-width:640px){main{padding:0 8px}header{height:auto;flex-wrap:wrap;padding:10px}nav{order:3;width:100%}nav button{flex:1}}
 </style>
 </head>
 <body>
-<div class="container">
 
-<div class="topbar">
-  <div>
-    <h1>🐪 CaMeL Chat Proxy</h1>
-    <div class="subtitle">CaMeL Chat → OpenAI + Anthropic 兼容 API<span class="refresh-indicator" id="refreshTimer"></span></div>
-  </div>
-  <div class="pw-box">
-    <label for="pwInput">管理密码</label>
-    <input id="pwInput" type="password" placeholder="admin" onchange="onPasswordChange()">
-  </div>
+<div id="loginScreen">
+  <h1>🐪 CaMeL Chat Proxy</h1>
+  <p>管理面板 · 请输入管理员密码</p>
+  <input type="password" id="pwd" placeholder="admin password" style="margin-bottom:12px">
+  <button class="btn" style="width:100%" onclick="doLogin()">进入面板</button>
 </div>
 
-<div class="stats">
-  <div class="stat"><div class="stat-value" id="statOnline">0</div><div class="stat-label">账号在线</div></div>
-  <div class="stat"><div class="stat-value" id="statTotal">0</div><div class="stat-label">账号总数</div></div>
-  <div class="stat"><div class="stat-value" id="statModels">0</div><div class="stat-label">模型数量</div></div>
-  <div class="stat"><div class="stat-value" id="statRotate">-</div><div class="stat-label">会话轮换轮次</div></div>
-</div>
+<div id="app" class="hidden">
+<header>
+  <div class="logo"><span class="cam">🐪</span> CaMeL Proxy</div>
+  <nav>
+    <button data-tab="dashboard" class="active" onclick="showTab('dashboard')">总览</button>
+    <button data-tab="accounts" onclick="showTab('accounts')">账号</button>
+    <button data-tab="config" onclick="showTab('config')">配置</button>
+    <button data-tab="models" onclick="showTab('models')">模型</button>
+    <button data-tab="logs" onclick="showTab('logs')">日志</button>
+  </nav>
+  <div class="user-area"><span id="statusDot" style="width:8px;height:8px;border-radius:50%;background:var(--ok);display:inline-block"></span><span id="healthText">…</span></div>
+</header>
 
-<!-- 账号管理 -->
-<div class="card">
-  <div class="flex" style="justify-content:space-between;margin-bottom:14px">
-    <h2 style="margin:0">👤 账号</h2>
-    <div class="row">
-      <button class="btn btn-ghost btn-sm" onclick="refreshCookies()">🔄 刷新Cookie</button>
-      <button class="btn btn-ghost btn-sm" onclick="testAccounts()">🔍 测试全部</button>
-      <button class="btn btn-primary btn-sm" onclick="toggleAddForm()">+ 添加账号</button>
+<main>
+  <!-- 总览 -->
+  <section id="tab-dashboard">
+    <div class="grid" id="statCards"></div>
+    <div class="card"><h2>📡 服务健康</h2><div id="healthDetail" class="muted">加载中…</div></div>
+    <div class="card">
+      <h2>⚡ 快捷操作</h2>
+      <div class="form-row">
+        <button class="btn" onclick="refreshModels()">刷新模型缓存</button>
+        <button class="btn ghost" onclick="testAccounts()">测试全部账号</button>
+        <button class="btn ghost" onclick="refreshCookies()">刷新全部 Cookie</button>
+        <button class="btn ghost" onclick="loadUsage()">查看用量</button>
+      </div>
+      <div id="usageBox" style="margin-top:14px"></div>
     </div>
-  </div>
-  <div id="accounts"><p class="muted">加载中…</p></div>
-  <div id="addAccountForm" style="display:none;margin-top:14px;padding:16px;background:var(--bg);border:1px solid var(--line);border-radius:10px">
-    <h3 style="margin-bottom:12px;font-size:15px">添加账号</h3>
-    <div class="form-group"><label>邮箱</label><input id="newEmail" placeholder="example@mail.com"></div>
-    <div class="form-group"><label>密码</label><input id="newPassword" type="password" placeholder="密码"></div>
-    <div class="row">
-      <button class="btn btn-primary" onclick="saveAccount()">保存并登录</button>
-      <button class="btn btn-ghost" onclick="toggleAddForm()">取消</button>
+  </section>
+
+  <!-- 账号 -->
+  <section id="tab-accounts" class="hidden">
+    <div class="card">
+      <h2>➕ 添加账号</h2>
+      <div class="form-row">
+        <input type="text" id="newEmail" placeholder="邮箱">
+        <input type="password" id="newPwd" placeholder="密码">
+        <button class="btn" onclick="addAccount()">添加</button>
+      </div>
     </div>
-  </div>
+    <div class="card">
+      <h2>👥 账号列表</h2>
+      <table>
+        <thead><tr><th>邮箱</th><th>状态</th><th>登录时间</th><th>最近测试</th><th style="width:220px">操作</th></tr></thead>
+        <tbody id="accountsBody"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- 配置 -->
+  <section id="tab-config" class="hidden">
+    <div class="card">
+      <h2>⚙️ 配置 (config.json)</h2>
+      <p class="muted" style="margin-bottom:12px">直接编辑 JSON，保存后立即生效。账号密码字段会以明文写入 config.json。</p>
+      <textarea id="configJson" rows="18" spellcheck="false"></textarea>
+      <div class="form-row" style="margin-top:14px">
+        <button class="btn" onclick="saveConfig()">💾 保存配置</button>
+        <button class="btn ghost" onclick="reloadConfig()">重新加载</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- 模型 -->
+  <section id="tab-models" class="hidden">
+    <div class="card">
+      <h2>🤖 可用模型 <span class="muted" id="modelCount"></span></h2>
+      <div class="form-row" style="margin-bottom:12px">
+        <button class="btn" onclick="refreshModels()">刷新模型缓存</button>
+      </div>
+      <div id="modelsBox"></div>
+    </div>
+  </section>
+
+  <!-- 日志 -->
+  <section id="tab-logs" class="hidden">
+    <div class="card">
+      <h2>📜 实时日志</h2>
+      <div class="form-row" style="margin-bottom:12px">
+        <button class="btn sm" id="logPauseBtn" onclick="toggleLogPause()">⏸ 暂停</button>
+        <button class="btn sm ghost" onclick="clearLogs()">清屏</button>
+        <span class="muted">自动刷新 3s · 仅保留最近 300 条</span>
+      </div>
+      <div id="logsBox"></div>
+    </div>
+  </section>
+</main>
 </div>
 
-<!-- 用量 -->
-<div class="card">
-  <div class="flex" style="justify-content:space-between;margin-bottom:14px">
-    <h2 style="margin:0">📊 用量<span id="usageCached" class="muted" style="margin-left:8px"></span></h2>
-    <button class="btn btn-primary btn-sm" id="usageBtn" onclick="loadUsage()">查询用量</button>
-  </div>
-  <div id="usage"><p class="muted">点击「查询用量」获取各账号使用情况（30 分钟缓存，不会自动轮询）。</p></div>
-</div>
-
-<!-- 设置 -->
-<div class="card">
-  <h2>⚙️ 设置</h2>
-  <div class="form-group"><label>API Keys（逗号分隔）</label><input id="apiKeys" placeholder="sk-camel"></div>
-  <div class="form-group"><label>管理密码</label><input id="adminPassword" type="password" placeholder="admin"></div>
-  <div class="form-group"><label>Cookie 刷新间隔（秒）</label><input id="refreshInterval" type="number" placeholder="21600"></div>
-  <div class="form-group"><label>会话轮换轮次</label><input id="sessionRotateTurns" type="number" min="1" placeholder="10"></div>
-  <div class="form-group"><label>全局联网搜索</label><select id="webSearch"><option value="false">关闭</option><option value="true">开启</option></select></div>
-  <div class="row">
-    <button class="btn btn-primary" onclick="saveSettings()">💾 保存设置</button>
-    <button class="btn btn-ghost" onclick="refreshModels()">♻️ 刷新模型列表</button>
-  </div>
-</div>
-
-<!-- API 端点 -->
-<div class="card">
-  <h2>📡 API 端点</h2>
-  <div class="endpoint">GET  /v1/models</div>
-  <div class="endpoint">POST /v1/chat/completions（OpenAI）</div>
-  <div class="endpoint">POST /v1/messages（Anthropic）</div>
-  <div class="endpoint">GET  /health</div>
-  <p class="muted" style="margin-top:8px">Auth: <code>Authorization: Bearer sk-camel</code> 或 <code>x-api-key: sk-camel</code></p>
-</div>
-
-</div>
+<div id="toast"></div>
 
 <script>
-let refreshSec = 0;
-let refreshTimer = null;
+const PWD_KEY = "camel_admin_pwd";
+let PWD = sessionStorage.getItem(PWD_KEY) || "";
+let logTimer = null, logPaused = false;
 
-const pwInput = document.getElementById('pwInput');
-pwInput.value = localStorage.getItem('camel_admin_pw') || 'admin';
+/* ---------- 工具 ---------- */
+function toast(msg){const t=document.getElementById("toast");t.textContent=msg;t.classList.add("show");setTimeout(()=>t.classList.remove("show"),2200);}
+async function api(path, method="GET", body=null){
+  const opts={method,headers:{"x-admin-password":PWD}};
+  if(body!==null){opts.headers["Content-Type"]="application/json";opts.body=JSON.stringify(body);}
+  const r=await fetch(path,opts);
+  let data=null;try{data=await r.json();}catch(e){data={error:String(r.status)};}
+  if(r.status===401||r.status===403){document.getElementById("app").classList.add("hidden");document.getElementById("loginScreen").classList.remove("hidden");toast("密码错误或已失效，请重新登录");return null;}
+  if(!r.ok){toast((data&&(data.detail||data.error))||("请求失败 "+r.status));return null;}
+  return data;
+}
+function esc(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
 
-function adminPw() { return pwInput.value || 'admin'; }
-
-function onPasswordChange() {
-  localStorage.setItem('camel_admin_pw', pwInput.value);
-  showToast('管理密码已保存');
-  loadAll();
+/* ---------- 登录 ---------- */
+function doLogin(){
+  PWD=document.getElementById("pwd").value.trim();
+  if(!PWD){toast("请输入密码");return;}
+  sessionStorage.setItem(PWD_KEY,PWD);
+  document.getElementById("loginScreen").classList.add("hidden");
+  document.getElementById("app").classList.remove("hidden");
+  showTab("dashboard");
+  toast("欢迎回来，主人~ 🐪");
 }
 
-function showToast(msg, type='success') {
-  const t = document.createElement('div');
-  t.className = 'toast toast-' + type;
-  t.textContent = msg;
-  document.body.appendChild(t);
-  setTimeout(() => t.remove(), 3000);
+/* ---------- Tab ---------- */
+function showTab(name){
+  document.querySelectorAll("nav button").forEach(b=>b.classList.toggle("active",b.dataset.tab===name));
+  ["dashboard","accounts","config","models","logs"].forEach(t=>document.getElementById("tab-"+t).classList.toggle("hidden",t!==name));
+  if(name==="dashboard")loadDashboard();
+  if(name==="accounts")loadAccounts();
+  if(name==="config")loadConfig();
+  if(name==="models")loadModels();
+  if(name==="logs")startLogs();
+}
+function badge(ok){return ok?'<span class="badge b-ok">✓ 可用</span>':'<span class="badge b-bad">✗ 失效</span>';}
+
+/* ---------- 总览 ---------- */
+async function loadDashboard(){
+  const h=await api("/health");
+  if(!h)return;
+  const accounts=h.accounts||[];
+  const okN=accounts.filter(a=>a.is_valid).length;
+  document.getElementById("statCards").innerHTML=[
+    {n:accounts.length,l:"账号总数"},
+    {n:okN,l:"可用账号"},
+    {n:h.model_count??"–",l:"缓存模型"},
+    {n:h.models_cached?"已缓存":"未缓存",l:"模型缓存状态"}
+  ].map(s=>`<div class="stat"><div class="num">${s.n}</div><div class="lbl">${s.l}</div></div>`).join("");
+  const lines=accounts.map(a=>`<div>${esc(a.email)} · ${badge(a.is_valid)} · Cookie:${a.cookie_ready?"就绪":"未就绪"} · 登录:${esc(a.login_time||"—")}</div>`).join("")||'<div class="muted">暂无账号</div>';
+  document.getElementById("healthDetail").innerHTML=`<div style="margin-bottom:6px">服务状态：<span class="badge b-ok">运行中</span></div>${lines}`;
+}
+async function testAccounts(){toast("正在测试全部账号…");const d=await api("/admin/test-accounts","POST");if(d){toast("测试完成");loadDashboard();}}
+async function refreshCookies(){toast("正在刷新全部 Cookie…");const d=await api("/admin/refresh-cookies","POST");if(d){toast("刷新完成");loadDashboard();}}
+async function loadUsage(){
+  const d=await api("/admin/usage");
+  if(!d)return;
+  const box=document.getElementById("usageBox");
+  const rows=(d.accounts||[]).map(a=>{
+    const u=a.usage||{};const s=a.search||{};
+    const boost=u.boost||{};
+    return `<div style="padding:6px 0;border-bottom:1px solid var(--line)"><b>${esc(a.email)}</b> · 等级 ${esc((u.tier&&u.tier.name)||"—")} · 周用量 ${u.weeklyCapPercent??"—"}% · 联网 ${s.used??"—"}/${s.limit??"—"} · Boost ${boost.boostsRemaining??"—"}/${boost.boostLimit??"—"} ${a.error?'<span class="badge b-bad">'+esc(a.error)+'</span>':""}</div>`;
+  }).join("")||'<div class="muted">暂无数据</div>';
+  box.innerHTML="<h3 style='font-size:14px;margin-bottom:6px'>📊 用量（30 分钟缓存）</h3>"+rows;
 }
 
-async function api(path, options={}) {
-  const opts = {method: options.method || 'GET', headers: {'x-admin-password': adminPw()}};
-  if (options.body !== undefined) {
-    opts.headers['Content-Type'] = 'application/json';
-    opts.body = JSON.stringify(options.body);
-  }
-  try {
-    const r = await fetch(path, opts);
-    const data = await r.json();
-    if (!r.ok) throw new Error(typeof data.detail === 'string' ? data.detail : (data.detail?.error?.message || r.statusText));
-    return data;
-  } catch(e) {
-    showToast(e.message, 'error');
-    return null;
-  }
+/* ---------- 账号 ---------- */
+async function loadAccounts(){
+  const d=await api("/admin/config");
+  if(!d)return;
+  const rows=(d.camel_accounts||[]).map(a=>`
+    <tr>
+      <td class="mono">${esc(a.email)}</td>
+      <td>${badge(a.is_valid)}</td>
+      <td>${esc(a.login_time||"—")}</td>
+      <td>${esc(a.last_test||"—")}</td>
+      <td>
+        <button class="btn sm" onclick="loginOne('${esc(a.email)}')">登录</button>
+        <button class="btn sm ghost" onclick="testOne('${esc(a.email)}')">测试</button>
+        <button class="btn sm danger" onclick="deleteAccount('${esc(a.email)}')">删除</button>
+      </td>
+    </tr>`).join("");
+  document.getElementById("accountsBody").innerHTML=rows||'<tr><td colspan="5" class="empty">暂无账号，请在上方添加</td></tr>';
+}
+async function loginOne(email){toast("正在登录 "+email+"…");const d=await api("/admin/login","POST",{email});if(d)toast(d.status==="ok"?"登录成功":"登录失败");loadAccounts();}
+async function testOne(email){toast("测试中…");await api("/admin/test-accounts","POST");loadAccounts();}
+async function addAccount(){
+  const email=document.getElementById("newEmail").value.trim();
+  const password=document.getElementById("newPwd").value;
+  if(!email||!password){toast("请填写邮箱和密码");return;}
+  const d=await api("/admin/config");
+  if(!d)return;
+  const list=d.camel_accounts||[];
+  if(list.some(a=>a.email===email)){toast("该账号已存在");return;}
+  list.push({email,password,is_valid:false,login_time:"",last_test:""});
+  const r=await api("/admin/config","POST",{camel_accounts:list});
+  if(r){toast("已添加 "+email);document.getElementById("newEmail").value="";document.getElementById("newPwd").value="";loadAccounts();}
+}
+async function deleteAccount(email){
+  if(!confirm("确定删除账号 "+email+" ？"))return;
+  const d=await api("/admin/config");
+  if(!d)return;
+  const list=(d.camel_accounts||[]).filter(a=>a.email!==email);
+  const r=await api("/admin/config","POST",{camel_accounts:list});
+  if(r){toast("已删除 "+email);loadAccounts();}
 }
 
-// ─── 数据加载 ───
-
-async function loadAll() {
-  const [cfg, health] = await Promise.all([
-    api('/admin/config'),
-    fetch('/health').then(r => r.json()).catch(() => null)
-  ]);
-  if (!cfg) return;
-
-  document.getElementById('apiKeys').value = cfg.api_keys || 'sk-camel';
-  document.getElementById('adminPassword').value = cfg.admin_password || 'admin';
-  document.getElementById('refreshInterval').value = cfg.refresh_interval || 21600;
-  document.getElementById('sessionRotateTurns').value = cfg.session_rotate_turns ?? 10;
-  document.getElementById('webSearch').value = String(cfg.web_search || false);
-
-  const healthAccounts = health?.accounts || [];
-  const healthMap = {};
-  healthAccounts.forEach(a => healthMap[a.email] = a);
-
-  const accounts = (cfg.camel_accounts || []).map(a => {
-    const live = healthMap[a.email] || {};
-    return {
-      email: a.email,
-      login_time: live.login_time || a.login_time || '',
-      last_test: a.last_test || '',
-      is_valid: a.is_valid,
-      cookie_ready: live.cookie_ready || false,
-    };
-  });
-
-  renderAccounts(accounts);
-  renderStats(accounts, health, cfg);
+/* ---------- 配置 ---------- */
+async function loadConfig(){
+  const d=await api("/admin/config");
+  if(!d)return;
+  document.getElementById("configJson").value=JSON.stringify(d,null,2);
 }
-
-function renderAccounts(accounts) {
-  const div = document.getElementById('accounts');
-  if (!accounts.length) {
-    div.innerHTML = '<p class="muted" style="padding:8px">未配置账号，请添加</p>';
-    return;
-  }
-  div.innerHTML = accounts.map((a, i) => {
-    const online = a.cookie_ready && a.is_valid;
-    return `
-    <div class="account-item">
-      <div class="account-info">
-        <div class="account-email"><span class="dot ${online ? 'dot-on' : 'dot-off'}"></span>${esc(a.email)}</div>
-        <div class="account-meta">
-          登录: ${a.login_time || '—'} · 测试: ${a.last_test || '—'} ·
-          Cookie <span class="badge ${a.cookie_ready ? 'badge-ok' : 'badge-fail'}">${a.cookie_ready ? '就绪' : '未就绪'}</span>
-          <span class="badge ${a.is_valid ? 'badge-ok' : 'badge-fail'}" style="margin-left:4px">${a.is_valid ? '有效' : '失效'}</span>
-        </div>
-      </div>
-      <div class="account-actions">
-        <button class="btn btn-primary btn-sm" onclick="loginOne('${esc(a.email)}')">登录</button>
-        <button class="btn btn-ghost btn-sm" onclick="testOne('${esc(a.email)}')">测试</button>
-        <button class="btn btn-danger btn-sm" onclick="removeAccount(${i})">删除</button>
-      </div>
-    </div>`;
-  }).join('');
+async function saveConfig(){
+  let obj=null;
+  try{obj=JSON.parse(document.getElementById("configJson").value);}catch(e){toast("JSON 解析失败："+e.message);return;}
+  const r=await api("/admin/config","POST",obj);
+  if(r){toast("配置已保存并生效");loadConfig();loadAccounts();}
 }
+async function reloadConfig(){loadConfig();toast("已重新加载");}
 
-function renderStats(accounts, health, cfg) {
-  document.getElementById('statOnline').textContent = accounts.filter(a => a.cookie_ready).length;
-  document.getElementById('statTotal').textContent = accounts.length;
-  document.getElementById('statModels').textContent = health?.model_count ?? '?';
-  document.getElementById('statRotate').textContent = cfg.session_rotate_turns ?? '-';
-
-  refreshSec = 30;
-  updateTimer();
+/* ---------- 模型 ---------- */
+async function loadModels(){
+  const d=await api("/v1/models");
+  if(!d)return;
+  const list=d.data||[];
+  document.getElementById("modelCount").textContent="· "+list.length+" 个";
+  document.getElementById("modelsBox").innerHTML=list.map(m=>`
+    <span class="model-tag"><b>${esc(m.id)}</b><br><span class="ctx">${esc(m.owned_by||"CaMeL")} · ctx ${m.context_window?m.context_window.toLocaleString():"?"}</span></span>`).join("")||'<div class="empty">暂无模型</div>';
 }
+async function refreshModels(){toast("正在刷新模型缓存…");const d=await api("/admin/refresh-models","POST");if(d){toast("模型已刷新");loadModels();loadDashboard();}}
 
-function updateTimer() {
-  clearTimeout(refreshTimer);
-  refreshTimer = null;
-  const el = document.getElementById('refreshTimer');
-  if (el && refreshSec > 0) {
-    el.textContent = `(${refreshSec}s 后自动刷新)`;
-    refreshSec--;
-    refreshTimer = setTimeout(updateTimer, 1000);
-  } else if (el) {
-    el.textContent = '(刷新中…)';
-    loadAll();
-  }
-}
-
-function esc(s) {
-  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/'/g,'&#39;').replace(/"/g,'&quot;');
-}
-
-// ─── 账号操作 ───
-
-function toggleAddForm() {
-  const f = document.getElementById('addAccountForm');
-  f.style.display = f.style.display === 'none' ? 'block' : 'none';
-  document.getElementById('newEmail').value = '';
-  document.getElementById('newPassword').value = '';
-}
-
-async function saveAccount() {
-  const email = document.getElementById('newEmail').value.trim();
-  const password = document.getElementById('newPassword').value;
-  if (!email || !password) { showToast('请填写邮箱和密码', 'error'); return; }
-
-  const cfg = await api('/admin/config');
-  if (!cfg) return;
-  const accounts = cfg.camel_accounts || [];
-  accounts.push({email, password, is_valid: false, login_time: '', last_test: ''});
-  const r = await api('/admin/config', {method: 'POST', body: {camel_accounts: accounts}});
-  if (!r) return;
-  toggleAddForm();
-
-  showToast('账号已添加，正在登录…');
-  await api('/admin/login', {method: 'POST', body: {email}});
-  loadAll();
-}
-
-async function removeAccount(index) {
-  if (!confirm('确认删除该账号？')) return;
-  const cfg = await api('/admin/config');
-  if (!cfg) return;
-  const accounts = cfg.camel_accounts || [];
-  accounts.splice(index, 1);
-  const r = await api('/admin/config', {method: 'POST', body: {camel_accounts: accounts}});
-  if (r) showToast('已删除');
-  loadAll();
-}
-
-async function refreshCookies() {
-  const r = await api('/admin/refresh-cookies', {method: 'POST'});
-  if (r) {
-    const oks = r.results.filter(x => x.ok).length;
-    showToast(`刷新完成: ${oks}/${r.results.length} 成功`);
-  }
-  loadAll();
-}
-
-async function testAccounts() {
-  showToast('正在测试全部账号…');
-  const r = await api('/admin/test-accounts', {method: 'POST'});
-  if (r) {
-    const oks = r.results.filter(x => x.ok).length;
-    showToast(`测试完成: ${oks}/${r.results.length} 通过`);
-  }
-  loadAll();
-}
-
-async function loginOne(email) {
-  showToast(`正在登录 ${email}…`);
-  const r = await api('/admin/login', {method: 'POST', body: {email}});
-  if (r) showToast(r.status === 'ok' ? `${email} 登录成功` : `${email} 登录失败`, r.status === 'ok' ? 'success' : 'error');
-  loadAll();
-}
-
-async function testOne(email) {
-  showToast(`正在测试 ${email}…`);
-  const r = await api('/admin/test-accounts', {method: 'POST'});
-  if (r) {
-    const row = r.results.find(x => x.email === email);
-    if (row) showToast(row.ok ? `${email} 连接正常` : `${email} 测试失败${row.error ? ': ' + row.error : ''}`, row.ok ? 'success' : 'error');
-  }
-  loadAll();
-}
-
-// ─── 用量 ───
-
-async function loadUsage() {
-  const btn = document.getElementById('usageBtn');
-  btn.disabled = true;
-  btn.textContent = '查询中…';
-  const r = await api('/admin/usage');
-  btn.disabled = false;
-  btn.textContent = '查询用量';
-  if (!r) return;
-
-  document.getElementById('usageCached').textContent = r.cached ? '（缓存）' : '';
-  const div = document.getElementById('usage');
-  if (!r.accounts.length) {
-    div.innerHTML = '<p class="muted">未配置账号</p>';
-    return;
-  }
-  div.innerHTML = r.accounts.map(a => {
-    if (a.error) {
-      return `<div class="usage-item"><b>${esc(a.email)}</b><div class="kv"><span style="color:var(--err)">查询失败: ${esc(a.error)}</span></div></div>`;
-    }
-    const usageKv = Object.entries(a.usage || {}).map(([k, v]) =>
-      `<span>${esc(k)}: <b>${esc(typeof v === 'object' ? JSON.stringify(v) : v)}</b></span>`).join('');
-    const s = a.search || {};
-    return `<div class="usage-item">
-      <b>${esc(a.email)}</b>
-      <div class="kv">${usageKv || '<span>无用量数据</span>'}</div>
-      <div class="kv"><span>联网搜索剩余: <b>${s.remaining ?? '—'}</b> / ${s.limit ?? '—'}（已用 ${s.used ?? '—'}）</span></div>
-    </div>`;
-  }).join('');
-}
-
-// ─── 设置 ───
-
-async function saveSettings() {
-  const body = {
-    api_keys: document.getElementById('apiKeys').value,
-    admin_password: document.getElementById('adminPassword').value,
-    refresh_interval: parseInt(document.getElementById('refreshInterval').value) || 21600,
-    session_rotate_turns: parseInt(document.getElementById('sessionRotateTurns').value) || 10,
-    web_search: document.getElementById('webSearch').value === 'true',
+/* ---------- 日志 ---------- */
+function startLogs(){
+  if(logTimer)return;
+  const tick=async()=>{
+    if(logPaused)return;
+    const d=await api("/admin/logs");
+    if(!d)return;
+    const box=document.getElementById("logsBox");
+    const html=(d.logs||[]).map(l=>{
+      const cls=/\bWARNING\b/.test(l)?"lwarn":/\bERROR\b/.test(l)?"lerr":"";
+      return `<div class="${cls}">${esc(l)}</div>`;
+    }).join("");
+    box.innerHTML=html;
+    box.scrollTop=box.scrollHeight;
   };
-  const r = await api('/admin/config', {method: 'POST', body});
-  if (r) {
-    if (body.admin_password !== adminPw()) {
-      pwInput.value = body.admin_password;
-      localStorage.setItem('camel_admin_pw', body.admin_password);
-    }
-    showToast('设置已保存');
-    loadAll();
-  }
+  tick();
+  logTimer=setInterval(tick,3000);
 }
-
-async function refreshModels() {
-  showToast('正在刷新模型列表…');
-  const r = await api('/admin/refresh-models', {method: 'POST'});
-  if (r) showToast(`模型列表已刷新，共 ${r.model_count} 个模型`);
-  loadAll();
+function toggleLogPause(){
+  logPaused=!logPaused;
+  document.getElementById("logPauseBtn").textContent=logPaused?"▶ 继续":"⏸ 暂停";
 }
+function clearLogs(){document.getElementById("logsBox").innerHTML='<div class="empty">已清屏</div>';}
 
-// ─── 启动 ───
-loadAll();
+/* ---------- 初始化 ---------- */
+if(PWD){document.getElementById("loginScreen").classList.add("hidden");document.getElementById("app").classList.remove("hidden");showTab("dashboard");}
+document.getElementById("pwd").addEventListener("keydown",e=>{if(e.key==="Enter")doLogin();});
 </script>
 </body>
 </html>

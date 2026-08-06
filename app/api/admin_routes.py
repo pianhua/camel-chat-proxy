@@ -142,6 +142,14 @@ async def health():
     return {"status": "ok", "accounts": accounts, "model_count": len(_model_cache) if _model_cache else 0, "models_cached": _model_cache is not None}
 
 
+@router.get("/admin/logs")
+async def get_logs(x_admin_password: Optional[str] = Header(None, alias="x-admin-password")):
+    """最近日志（内存环形缓冲，供管理面板实时查看）。"""
+    verify_admin(x_admin_password)
+    from app.core.logger import get_recent_logs
+    return {"status": "ok", "logs": get_recent_logs(300)}
+
+
 @router.get("/")
 async def serve_web_ui():
     web = Path(__file__).parent.parent.parent / "web" / "index.html"

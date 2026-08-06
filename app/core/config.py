@@ -36,6 +36,9 @@ class Config:
     session_rotate_turns: int = 10  # 每个 CaMeL 会话最多承载的用户消息数
     message_mode: str = "auto"  # auto/native/compact：auto 按模型实测集合自动折叠
     model_contexts: dict = field(default_factory=dict)  # 模型上下文上限覆盖（OpenAI 格式 context_window）
+    max_inflight_per_account: int = 1   # 账号池：每账号并发槽位（隐蔽优先默认 1）
+    account_cooldown_seconds: int = 120  # 账号池：失败冷却秒数，到期自动恢复
+    account_acquire_timeout: float = 30  # 账号池：无可用账号时排队等待秒数
 
     def to_dict(self):
         d = {
@@ -46,6 +49,9 @@ class Config:
             "refresh_interval": self.refresh_interval,
             "session_rotate_turns": self.session_rotate_turns,
             "message_mode": self.message_mode,
+            "max_inflight_per_account": self.max_inflight_per_account,
+            "account_cooldown_seconds": self.account_cooldown_seconds,
+            "account_acquire_timeout": self.account_acquire_timeout,
         }
         if self.models:
             d["models"] = self.models
@@ -65,6 +71,9 @@ class Config:
             "refresh_interval": self.refresh_interval,
             "session_rotate_turns": self.session_rotate_turns,
             "message_mode": self.message_mode,
+            "max_inflight_per_account": self.max_inflight_per_account,
+            "account_cooldown_seconds": self.account_cooldown_seconds,
+            "account_acquire_timeout": self.account_acquire_timeout,
         }
         if self.models:
             d["models"] = self.models
@@ -100,6 +109,9 @@ class ConfigManager:
             session_rotate_turns=rotate,
             message_mode=data.get("message_mode", "auto"),
             model_contexts=data.get("model_contexts", {}) or {},
+            max_inflight_per_account=max(1, int(data.get("max_inflight_per_account", 1) or 1)),
+            account_cooldown_seconds=max(0, int(data.get("account_cooldown_seconds", 120) or 0)),
+            account_acquire_timeout=max(5, float(data.get("account_acquire_timeout", 30) or 30)),
         )
 
     def load(self):

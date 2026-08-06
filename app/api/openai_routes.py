@@ -13,6 +13,7 @@ from fastapi.responses import StreamingResponse
 from app.core.config import config_manager
 from app.core.http import get_http_client
 from app.core.logger import get_logger
+from app.core.account_pool import account_pool
 from app.camel.client import CamelAPIError
 from app.camel.session_pool import session_pool
 from app.convert.openai_conv import build_payload, OPENAI_SIZE_TO_CAMEL
@@ -22,6 +23,10 @@ from .deps import check_api_key, pick_ready_account, get_camel_client
 router = APIRouter()
 
 logger = get_logger(__name__)
+
+
+class _RetryRequest(Exception):
+    """内部信号：上游 5xx 时换账号重试一次。"""
 
 session_pool.rotate_turns = config_manager.config.session_rotate_turns
 
@@ -109,8 +114,6 @@ async def chat_completions(request: Request):
         raise HTTPException(status_code=400, detail={"error": {"message": "messages required"}})
 
     http = await get_http_client()
-    account, camel = await pick_ready_account(http)
-    session_id = await session_pool.get_session(http, camel, model, account.email)
     web_search = bool(body.get("web_search", config_manager.config.web_search))
 
     # 专家模式采样参数透传（CaMeL /api/chat/completion 支持 sampling 对象，字段为驼峰命名）
@@ -122,50 +125,70 @@ async def chat_completions(request: Request):
             sampling[k] = v
     message_mode = body.get("message_mode", config_manager.config.message_mode or "auto")
 
-    try:
-        payload = await build_payload(http, camel, messages, model, session_id, web_search,
-                                      sampling=sampling or None, message_mode=message_mode)
-    except CamelAPIError as e:
-        raise HTTPException(status_code=e.status_code, detail={"error": {"message": str(e)}})
+    excluded: set = set()
+    attempt = 0
+    while True:
+        account, camel = await pick_ready_account(http, exclude=excluded)
+        try:
+            session_id = await session_pool.get_session(http, camel, model, account.email)
+            payload = await build_payload(http, camel, messages, model, session_id, web_search,
+                                          sampling=sampling or None, message_mode=message_mode)
+            session_pool.record_turn(account.email)
+            request_id = str(uuid.uuid4())
 
-    session_pool.record_turn(account.email)
-    request_id = str(uuid.uuid4())
+            async def _after_first_reply():
+                if payload.get("userText"):
+                    await session_pool.sync_title(http, camel, account.email, payload["userText"])
 
-    async def _after_first_reply():
-        if payload.get("userText"):
-            await session_pool.sync_title(http, camel, account.email, payload["userText"])
+            if stream:
+                async def _stream():
+                    try:
+                        first = True
+                        async for chunk in camel.stream_chat(http, payload):
+                            if first:
+                                first = False
+                                await _after_first_reply()
+                            data = {
+                                "id": f"chatcmpl-{request_id}", "object": "chat.completion.chunk",
+                                "created": 0, "model": model,
+                                "choices": [{"index": 0, "delta": {"content": chunk}, "finish_reason": None}],
+                            }
+                            yield f"data: {json.dumps(data, ensure_ascii=False)}\n\n"
+                        yield "data: [DONE]\n\n"
+                    except Exception as e:
+                        yield f"data: {json.dumps({'error': {'message': f'CaMeL API error: {e}'}})}\n\n"
+                        yield "data: [DONE]\n\n"
+                    finally:
+                        await account_pool.release(account)
+                return StreamingResponse(_stream(), media_type="text/event-stream")
 
-    if stream:
-        async def _stream():
             try:
-                first = True
-                async for chunk in camel.stream_chat(http, payload):
-                    if first:
-                        first = False
-                        await _after_first_reply()
-                    data = {
-                        "id": f"chatcmpl-{request_id}", "object": "chat.completion.chunk",
-                        "created": 0, "model": model,
-                        "choices": [{"index": 0, "delta": {"content": chunk}, "finish_reason": None}],
-                    }
-                    yield f"data: {json.dumps(data, ensure_ascii=False)}\n\n"
-                yield "data: [DONE]\n\n"
-            except Exception as e:
-                yield f"data: {json.dumps({'error': {'message': f'CaMeL API error: {e}'}})}\n\n"
-                yield "data: [DONE]\n\n"
-        return StreamingResponse(_stream(), media_type="text/event-stream")
+                text = await camel.chat_completion(http, payload)
+                await _after_first_reply()
+            except CamelAPIError as e:
+                await account_pool.mark_failed(account)
+                if attempt == 0 and e.status_code >= 500:
+                    excluded.add(account.email)
+                    raise _RetryRequest()
+                raise HTTPException(status_code=e.status_code, detail={"error": {"message": str(e)}})
 
-    try:
-        text = await camel.chat_completion(http, payload)
-        await _after_first_reply()
-    except CamelAPIError as e:
-        raise HTTPException(status_code=e.status_code, detail={"error": {"message": str(e)}})
-
-    return {
-        "id": f"chatcmpl-{request_id}", "object": "chat.completion", "created": 0, "model": model,
-        "choices": [{"index": 0, "message": {"role": "assistant", "content": text}, "finish_reason": "stop"}],
-        "usage": _estimate_usage(payload, text),
-    }
+            await account_pool.release(account)
+            return {
+                "id": f"chatcmpl-{request_id}", "object": "chat.completion", "created": 0, "model": model,
+                "choices": [{"index": 0, "message": {"role": "assistant", "content": text}, "finish_reason": "stop"}],
+                "usage": _estimate_usage(payload, text),
+            }
+        except _RetryRequest:
+            await account_pool.release(account)
+            attempt += 1
+            continue
+        except HTTPException:
+            await account_pool.release(account)
+            raise
+        except Exception as e:
+            await account_pool.release(account)
+            logger.warning("[Chat] unexpected error: %s", e, exc_info=True)
+            raise HTTPException(status_code=502, detail={"error": {"message": str(e)}})
 
 
 def _estimate_usage(payload: dict, output_text: str) -> dict:
@@ -204,12 +227,16 @@ async def images_generations(request: Request):
             prior_images.append(du)
 
     account, camel = await pick_ready_account(http)
-    session_id = await session_pool.get_session(http, camel, model, account.email)
     try:
-        urls = await camel.generate_image(http, prompt=prompt, model=model, size=size, n=n,
-                                          prior_images=prior_images, session_id=session_id)
-    except CamelAPIError as e:
-        raise HTTPException(status_code=e.status_code, detail={"error": {"message": str(e)}})
+        session_id = await session_pool.get_session(http, camel, model, account.email)
+        try:
+            urls = await camel.generate_image(http, prompt=prompt, model=model, size=size, n=n,
+                                              prior_images=prior_images, session_id=session_id)
+        except CamelAPIError as e:
+            await account_pool.mark_failed(account)
+            raise HTTPException(status_code=e.status_code, detail={"error": {"message": str(e)}})
+    finally:
+        await account_pool.release(account)
 
     data = []
     for du in urls:

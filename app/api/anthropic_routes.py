@@ -38,12 +38,12 @@ async def anthropic_messages(request: Request, x_api_key: Optional[str] = Header
     stream = bool(body.get("stream", False))
     web_search = bool(body.get("web_search", config_manager.config.web_search))
 
-    # Anthropic 采样参数 → CaMeL sampling（浏览器实测专家模式支持）
+    # Anthropic 采样参数 → CaMeL sampling（字段为驼峰命名，浏览器实测）
     sampling = {}
-    for k, v in (("temperature", body.get("temperature")), ("max_tokens", body.get("max_tokens")),
-                 ("top_p", body.get("top_p")), ("top_k", body.get("top_k")),
-                 ("frequency_penalty", body.get("frequency_penalty")),
-                 ("presence_penalty", body.get("presence_penalty"))):
+    for k, v in (("temperature", body.get("temperature")), ("maxTokens", body.get("max_tokens")),
+                 ("topP", body.get("top_p")), ("topK", body.get("top_k")),
+                 ("frequencyPenalty", body.get("frequency_penalty")),
+                 ("presencePenalty", body.get("presence_penalty"))):
         if v is not None:
             sampling[k] = v
     message_mode = body.get("message_mode", config_manager.config.message_mode or "auto")

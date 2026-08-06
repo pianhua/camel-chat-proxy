@@ -113,11 +113,11 @@ async def chat_completions(request: Request):
     session_id = await session_pool.get_session(http, camel, model, account.email)
     web_search = bool(body.get("web_search", config_manager.config.web_search))
 
-    # 专家模式采样参数透传（CaMeL /api/chat/completion 支持 sampling 对象，浏览器实测）
+    # 专家模式采样参数透传（CaMeL /api/chat/completion 支持 sampling 对象，字段为驼峰命名）
     sampling = {}
-    for k, v in (("temperature", body.get("temperature")), ("top_p", body.get("top_p")),
-                 ("max_tokens", body.get("max_tokens")), ("frequency_penalty", body.get("frequency_penalty")),
-                 ("presence_penalty", body.get("presence_penalty"))):
+    for k, v in (("temperature", body.get("temperature")), ("topP", body.get("top_p")),
+                 ("maxTokens", body.get("max_tokens")), ("frequencyPenalty", body.get("frequency_penalty")),
+                 ("presencePenalty", body.get("presence_penalty"))):
         if v is not None:
             sampling[k] = v
     message_mode = body.get("message_mode", config_manager.config.message_mode or "auto")

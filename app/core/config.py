@@ -6,6 +6,10 @@ from pathlib import Path
 from typing import List, Optional
 from dataclasses import dataclass, asdict, field
 
+from app.core.logger import get_logger
+
+logger = get_logger(__name__)
+
 
 @dataclass
 class CamelAccount:
@@ -96,7 +100,7 @@ class ConfigManager:
             with open(self.config_file, "r", encoding="utf-8") as f:
                 self.config = self._parse(json.load(f))
         except Exception as e:
-            print(f"加载配置失败: {e}")
+            logger.error("加载配置失败: %s", e, exc_info=True)
             self.config = Config()
             self.save()
 
@@ -106,7 +110,7 @@ class ConfigManager:
                 with open(self.config_file, "w", encoding="utf-8") as f:
                     json.dump(self.config.to_save_dict(), f, indent=2, ensure_ascii=False)
             except Exception as e:
-                print(f"保存配置失败: {e}")
+                logger.error("保存配置失败: %s", e, exc_info=True)
 
     def validate_api_key(self, key: str) -> bool:
         if not key or not key.strip():

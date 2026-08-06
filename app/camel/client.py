@@ -6,6 +6,7 @@ from typing import Optional, AsyncIterator
 
 import httpx
 
+from app.core.config import config_manager
 from .login import playwright_login, CAMEL_BASE, _UA
 
 
@@ -51,7 +52,8 @@ class CamelClient:
         return {"camel_session": self.cookie, "camel_lang": "zh-CN"}
 
     async def ensure_cookie(self, http: httpx.AsyncClient) -> bool:
-        if self.cookie and (time.time() - self.cookie_time) < 21600:
+        ttl = getattr(config_manager.config, "refresh_interval", 21600)
+        if self.cookie and (time.time() - self.cookie_time) < ttl:
             return True
         return await self.refresh_cookie()
 

@@ -12,6 +12,7 @@ from fastapi.responses import StreamingResponse
 
 from app.core.config import config_manager
 from app.core.http import get_http_client
+from app.core.logger import get_logger
 from app.camel.client import CamelAPIError
 from app.camel.session_pool import session_pool
 from app.convert.openai_conv import build_payload, OPENAI_SIZE_TO_CAMEL
@@ -19,6 +20,8 @@ from app.convert.attachments import resolve_image_to_data_url
 from .deps import check_api_key, pick_ready_account, get_camel_client
 
 router = APIRouter()
+
+logger = get_logger(__name__)
 
 session_pool.rotate_turns = config_manager.config.session_rotate_turns
 
@@ -32,8 +35,6 @@ IMAGE_MODEL_MAP = {
     "gpt-image-2": "gpt-image-2",
     "gemini-3-pro-image-preview": "gemini-3-pro-image-preview",
 }
-
-IMAGE_MODELS = {"gpt-image-2", "gemini-3-pro-image-preview"}
 
 
 async def discover_models(http) -> list:
@@ -54,10 +55,10 @@ async def discover_models(http) -> list:
             for m in raw if m.get("type") in ("chat", "image")
         ]
         _model_cache, _model_cache_time = result, now
-        print(f"[Models] Discovered {len(result)} models")
+        logger.info("[Models] Discovered %d models", len(result))
         return result
     except Exception as e:
-        print(f"[Models] Discovery failed: {e}")
+        logger.warning("[Models] Discovery failed: %s", e, exc_info=True)
         if _model_cache:
             return _model_cache
         raise

@@ -8,6 +8,10 @@ from urllib.parse import unquote
 
 import httpx
 
+from app.core.logger import get_logger
+
+logger = get_logger(__name__)
+
 _MIME_BY_EXT = {
     ".txt": "text/plain", ".md": "text/markdown", ".json": "application/json",
     ".py": "text/x-python", ".js": "text/javascript", ".html": "text/html",
@@ -41,7 +45,7 @@ def _read_local(path: str) -> tuple[str, bytes, str] | None:
     path = unquote(path)
     path = os.path.normpath(path)
     if not os.path.exists(path):
-        print(f"[Attach] Local file not found: {path}")
+        logger.warning("[Attach] Local file not found: %s", path)
         return None
     name = os.path.basename(path) or "file"
     mime = _MIME_BY_EXT.get(os.path.splitext(name)[1].lower(), "application/octet-stream")
@@ -58,7 +62,7 @@ async def _read_remote(http: httpx.AsyncClient, url: str) -> tuple[str, bytes, s
         mime = r.headers.get("content-type", "application/octet-stream").split(";")[0].strip()
         return name, r.content, mime
     except Exception as e:
-        print(f"[Attach] Download failed {url}: {e}")
+        logger.warning("[Attach] Download failed %s: %s", url, e)
         return None
 
 

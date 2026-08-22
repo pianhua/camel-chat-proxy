@@ -71,6 +71,8 @@ async def admin_login(request: Request, x_admin_password: Optional[str] = Header
     account.is_valid = ok
     account.login_time = time.strftime("%m-%d %H:%M") if ok else ""
     if ok:
+        if camel.cookie:
+            account.cookie = camel.cookie
         await account_pool.mark_ok(account)
     config_manager.save()
     return {"status": "ok" if ok else "failed", "email": account.email, "method": "playwright"}
@@ -85,6 +87,8 @@ async def refresh_all(x_admin_password: Optional[str] = Header(None, alias="x-ad
         try:
             ok = await camel.refresh_cookie()
             acc.is_valid = ok
+            if ok and camel.cookie:
+                acc.cookie = camel.cookie
             acc.last_test = time.strftime("%m-%d %H:%M") if ok else acc.last_test
             results.append({"email": acc.email, "ok": ok})
         except Exception as e:

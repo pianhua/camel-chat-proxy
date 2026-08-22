@@ -33,8 +33,11 @@ async def _background_check_accounts():
                 logger.info("  [Cookie Ready] %s", acc.email)
             elif getattr(acc, "password", ""):
                 try:
-                    ok = await get_camel_client(acc).refresh_cookie()
+                    c = get_camel_client(acc)
+                    ok = await c.refresh_cookie()
                     acc.is_valid = ok
+                    if ok and c.cookie:
+                        acc.cookie = c.cookie
                     logger.info("  %s %s", "OK" if ok else "FAIL", acc.email)
                 except Exception:
                     logger.error("[Startup] Login failed for %s", acc.email, exc_info=True)

@@ -64,6 +64,10 @@ async def pick_ready_account(http=None, exclude: Optional[Set[str]] = None):
             await account_pool.release(account)
             raise HTTPException(status_code=503, detail={
                 "error": {"message": f"login failed for {account.email}"}})
+        if client.cookie and client.cookie != getattr(account, "cookie", ""):
+            account.cookie = client.cookie
+            account.is_valid = True
+            config_manager.save()
     except HTTPException:
         raise
     except Exception:

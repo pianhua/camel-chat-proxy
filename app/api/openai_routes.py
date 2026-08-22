@@ -10,7 +10,7 @@ from typing import Optional
 from fastapi import APIRouter, HTTPException, Header, Request
 from fastapi.responses import StreamingResponse
 
-from app.core.config import config_manager
+from app.core.config import config_manager, CamelAccount
 from app.core.http import get_http_client
 from app.core.logger import get_logger
 from app.core.account_pool import account_pool

@@ -34,3 +34,25 @@ async def test_fallback_models_list():
     assert "gpt-5.6-sol" in model_ids
     assert "kimi-k3" in model_ids
     assert "gpt-image-2" in model_ids
+
+
+@pytest.mark.asyncio
+async def test_discover_models_empty_accounts():
+    """验证账号列表为空时，discover_models 不会因 NameError 崩溃，仍能返回兜底模型。"""
+    from app.api.openai_routes import discover_models
+    import app.api.openai_routes as o_routes
+    from app.core.http import get_http_client
+
+    o_routes._model_cache = None
+    saved_accounts = config_manager.config.camel_accounts
+    config_manager.config.camel_accounts = []
+    try:
+        http = await get_http_client()
+        models = await discover_models(http)
+        assert len(models) >= 17
+        ids = {m["id"] for m in models}
+        assert "claude-fable-5" in ids
+        assert "gpt-4o" in ids
+    finally:
+        config_manager.config.camel_accounts = saved_accounts
+        o_routes._model_cache = None

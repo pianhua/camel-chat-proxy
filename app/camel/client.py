@@ -35,8 +35,20 @@ class CamelClient:
         self.cookie_time: float = time.time() if cookie else 0
         self.proxy: str = proxy
 
-    def _headers(self, extra: dict | None = None) -> dict:
+    def _get_cookie_val(self) -> str:
         if not self.cookie:
+            return ""
+        c = self.cookie.strip()
+        if "camel_session=" in c:
+            import re
+            m = re.search(r'camel_session=([^;]+)', c)
+            if m:
+                return m.group(1).strip()
+        return c
+
+    def _headers(self, extra: dict | None = None) -> dict:
+        c_val = self._get_cookie_val()
+        if not c_val:
             raise CamelAPIError(503, "Cookie not ready")
         h = {
             "user-agent": _UA,
@@ -47,16 +59,17 @@ class CamelClient:
             "sec-fetch-dest": "empty",
             "sec-fetch-mode": "cors",
             "sec-fetch-site": "same-origin",
-            "cookie": f"camel_session={self.cookie}; camel_lang=zh-CN",
+            "cookie": f"camel_session={c_val}; camel_lang=zh-CN",
         }
         if extra:
             h.update(extra)
         return h
 
     def _cookies(self) -> dict:
-        if not self.cookie:
+        c_val = self._get_cookie_val()
+        if not c_val:
             raise CamelAPIError(503, "Cookie not ready")
-        return {"camel_session": self.cookie, "camel_lang": "zh-CN"}
+        return {"camel_session": c_val, "camel_lang": "zh-CN"}
 
     async def ensure_cookie(self, http: httpx.AsyncClient) -> bool:
         ttl = getattr(config_manager.config, "refresh_interval", 21600)

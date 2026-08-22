@@ -58,12 +58,12 @@ async def _playwright_login_once(email: str, password: str, proxy: str = "") -> 
                 await pass_input.fill(password)
 
             # 勾选用户协议复选框
-            checkbox = await page.query_selector('input[type="checkbox"]')
-            if checkbox:
-                is_checked = await checkbox.is_checked()
-                if not is_checked:
-                    await checkbox.click()
-
+            await page.evaluate("""() => {
+                const cb = document.querySelector('input[type="checkbox"]');
+                if (cb && !cb.checked) {
+                    cb.click();
+                }
+            }""")
             await page.wait_for_timeout(500)
 
             # 3. 点击提交按钮（“继续” 或 submit button）

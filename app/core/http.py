@@ -21,6 +21,7 @@ async def get_http_client(proxy: Optional[str] = None) -> httpx.AsyncClient:
     if client is None or client.is_closed or client_loop is not loop:
         client = httpx.AsyncClient(
             proxy=proxy or None,
+            trust_env=False,
             timeout=httpx.Timeout(600.0, connect=30.0),
             http2=True,
             limits=httpx.Limits(max_keepalive_connections=20, max_connections=50, keepalive_expiry=30),

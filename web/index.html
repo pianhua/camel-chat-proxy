@@ -1132,6 +1132,17 @@ async function sendPlaygroundMessage() {
         web_search: search
       })
     });
+    if (!resp.ok) {
+      const errText = await resp.text();
+      let errMsg = errText;
+      try {
+        const j = JSON.parse(errText);
+        errMsg = j.error?.message || errText;
+      } catch(e) {}
+      assistantBubble.content = `❌ [HTTP ${resp.status}] ${errMsg}\n\n💡 解决指引：当前账号尚未填入有效 Cookie（或账号密码登录失败）。\n请前往「👥 账号集群」页签，点击对应账号右侧的「填 Cookie」按钮，粘贴在浏览器已登录页面获取的 camel_session 值，即可立即正常对话！`;
+      renderPlayMessages();
+      return;
+    }
 
     const reader = resp.body.getReader();
     const decoder = new TextDecoder();

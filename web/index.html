@@ -636,6 +636,7 @@ input:checked + .slider:before { transform: translateX(16px); }
       <div class="card-title">
         <span>👥 账号列表与独占配置</span>
         <div style="display:flex; gap:8px;">
+          <button class="btn btn-secondary btn-sm" onclick="fetchUsageModal()">📊 查询用量额度</button>
           <button class="btn btn-secondary btn-sm" onclick="testAllAccounts()">⚡ 全量测活</button>
           <button class="btn btn-sm" onclick="openAddAccountModal()">+ 添加账号</button>
         </div>
@@ -865,6 +866,20 @@ input:checked + .slider:before { transform: translateX(16px); }
     <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:20px;">
       <button class="btn btn-secondary btn-sm" onclick="closeModal('cookieModal')">取消</button>
       <button class="btn btn-sm" onclick="submitCookieModal()">保存并生效</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: 用量与额度详情 -->
+<div class="modal-backdrop" id="usageModal">
+  <div class="modal" style="max-width: 620px;">
+    <h3 style="font-size:16px; font-weight:700; margin-bottom:16px;">📊 账号用量与额度详情</h3>
+    <div id="usageModalBody" style="display:flex; flex-direction:column; gap:16px; max-height:440px; overflow-y:auto; padding-right:4px;">
+      <div style="color:var(--text-dim); text-align:center;">正在查询...</div>
+    </div>
+    <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:20px;">
+      <button class="btn btn-secondary btn-sm" onclick="fetchUsageModal(true)">🔄 刷新</button>
+      <button class="btn btn-sm" onclick="closeModal('usageModal')">关闭</button>
     </div>
   </div>
 </div>
@@ -1358,13 +1373,101 @@ async function refreshSub(subId) {
   loadBridgeTab();
 }
 
+// Usage & Quota Modal
+async function fetchUsageModal(force = false) {
+  openModal('usageModal');
+  const body = document.getElementById('usageModalBody');
+  body.innerHTML = '<div style="color:var(--text-dim); text-align:center; padding:24px;">正在连接上游查询用量与搜索额度...</div>';
+  try {
+    const res = await fetch('/admin/usage', { headers: getAuthHeader() });
+    const data = await res.json();
+    const accounts = data.accounts || [];
+    if (!accounts.length) {
+      body.innerHTML = '<div style="color:var(--text-dim); text-align:center;">未配置任何账号。</div>';
+      return;
+    }
+    body.innerHTML = accounts.map(a => {
+      if (a.error) {
+        return `
+          <div style="background:rgba(239,68,68,0.1); border:1px solid rgba(239,68,68,0.2); border-radius:var(--radius-sm); padding:14px;">
+            <div style="font-weight:700; color:var(--err);">${escapeHtml(a.email)}</div>
+            <div style="font-size:12px; color:var(--text-dim); margin-top:4px;">查询失败: ${escapeHtml(a.error)}</div>
+          </div>
+        `;
+      }
+      const u = a.usage || {};
+      const s = a.search || {};
+      const weekPct = u.weeklyCapPercent ?? u.usedThisWeek?.percent ?? 0;
+      const tierName = u.tier?.name || 'Free';
+      const searchRemain = s.dailyRemaining ?? s.remaining ?? '-';
+      const searchLimit = s.dailyLimit ?? s.limit ?? '-';
+      const models = (u.byModel || []).slice(0, 6);
+
+      return `
+        <div style="background:rgba(255,255,255,0.03); border:1px solid var(--border-subtle); border-radius:var(--radius-sm); padding:16px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+            <div>
+              <strong style="font-size:14px;">${escapeHtml(a.email)}</strong>
+              <span class="badge badge-info" style="margin-left:6px;">${tierName}</span>
+            </div>
+            <div style="font-size:12px; color:var(--text-muted);">
+              联网搜索剩余: <strong style="color:var(--ok);">${searchRemain}</strong> / ${searchLimit} 次
+            </div>
+          </div>
+
+          <div style="margin-bottom:10px;">
+            <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:4px;">
+              <span style="color:var(--text-dim);">本周额度消耗</span>
+              <strong style="color:${weekPct > 80 ? 'var(--err)' : 'var(--info)'};">${weekPct}%</strong>
+            </div>
+            <div style="background:rgba(255,255,255,0.1); height:8px; border-radius:4px; overflow:hidden;">
+              <div style="background:${weekPct > 80 ? 'var(--err)' : 'var(--primary)'}; width:${Math.min(100, weekPct)}%; height:100%;"></div>
+            </div>
+          </div>
+
+          ${models.length ? `
+            <div style="font-size:11px; color:var(--text-dim); margin-top:10px; margin-bottom:6px;">各模型用量消耗占比:</div>
+            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap:6px;">
+              ${models.map(m => `
+                <div style="background:rgba(0,0,0,0.25); padding:6px 8px; border-radius:4px; font-size:11px; display:flex; justify-content:space-between;">
+                  <span style="color:var(--text-muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${m.displayName || m.modelId}</span>
+                  <strong style="color:var(--text-main); margin-left:4px;">${m.percent}%</strong>
+                </div>
+              `).join('')}
+            </div>
+          ` : ''}
+        </div>
+      `;
+    }).join('');
+  } catch(e) {
+    body.innerHTML = `<div style="color:var(--err); text-align:center;">请求异常: ${e.message}</div>`;
+  }
+}
+
+async function testAllAccounts() {
+  const btn = event?.target;
+  if (btn) { btn.disabled = true; btn.innerText = '测活中...'; }
+  try {
+    const res = await fetch('/admin/test-accounts', { method: 'POST', headers: getAuthHeader() });
+    const data = await res.json();
+    const results = data.results || [];
+    const okCount = results.filter(r => r.ok).length;
+    alert(`全量测活完成！成功: ${okCount} / ${results.length}\n\n` + results.map(r => `${r.email}: ${r.ok ? '✅ 正常 (' + r.models + ' 模型就绪)' : '❌ 失败 (' + r.error + ')'}`).join('\n'));
+    fetchHealth();
+  } catch(e) {
+    alert('测活失败: ' + e.message);
+  } finally {
+    if (btn) { btn.disabled = false; btn.innerText = '⚡ 全量测活'; }
+  }
+}
+
 // Utils
 function copyText(txt) {
   navigator.clipboard.writeText(txt);
   alert('已复制到剪贴板: ' + txt);
 }
 function copyApiConfig() {
-  const cfg = `BASE_URL: http://127.0.0.1:8000/v1\nAPI_KEY: sk-camel`;
+  const cfg = `BASE_URL: http://127.0.0.1:5050/v1\nAPI_KEY: sk-camel`;
   navigator.clipboard.writeText(cfg);
   alert('已复制客户端配置参数！');
 }

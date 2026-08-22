@@ -748,7 +748,11 @@ input:checked + .slider:before { transform: translateX(16px); }
           <input type="range" min="0" max="1" step="0.1" value="0.7" oninput="document.getElementById('tempVal').innerText=this.value">
         </div>
         <div class="form-group">
-          <label><input type="checkbox" id="playSearch"> 开启联网搜索 (Web Search)</label>
+          <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+            <input type="checkbox" id="playSearch"> 
+            <span>开启联网搜索 (Web Search)</span>
+            <span style="font-size:11px; color:var(--text-dim);">(默认关闭 · 单号仅 10 次/天)</span>
+          </label>
         </div>
         <div style="font-size:12px; color:var(--text-dim); margin-top:20px; line-height:1.6;">
           💡 采用流式 SSE 对话打字机输出，可实时测试首字延迟 (TTFT) 与回复质量。

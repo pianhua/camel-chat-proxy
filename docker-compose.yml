@@ -1,0 +1,13 @@
+services:
+  camel-proxy:
+    build: .
+    container_name: camel-chat-proxy
+    restart: unless-stopped
+    ports:
+      - "5050:5050"
+    volumes:
+      - ./config.json:/app/config.json
+      - ./data:/app/data
+      - ./mihomo_subscriptions.json:/app/mihomo_subscriptions.json
+    environment:
+      - PORT=5050

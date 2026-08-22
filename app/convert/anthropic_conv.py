@@ -1,6 +1,8 @@
-"""Anthropic Messages 格式 → OpenAI 中间格式（再经 openai_conv 转 CaMeL）。"""
+from app.core.config import config_manager
 
 ANTHROPIC_MODEL_MAP = {
+    "claude-3-7-sonnet-20250219": "claude-sonnet-5",
+    "claude-3-7-sonnet": "claude-sonnet-5",
     "claude-sonnet-4-20250514": "claude-sonnet-4-6",
     "claude-opus-4-20250514": "claude-opus-4-7",
     "claude-haiku-4-5-20251001": "claude-haiku-4-5",
@@ -9,11 +11,14 @@ ANTHROPIC_MODEL_MAP = {
     "claude-opus-4-1": "claude-opus-4-7",
     "claude-3-5-sonnet-20241022": "claude-sonnet-4-6",
     "claude-3-5-haiku-20241022": "claude-haiku-4-5",
+    "claude-3-opus-20240229": "claude-opus-4-6",
+    "claude-3-haiku-20240307": "claude-haiku-4-5",
 }
 
 
 def to_camel_model(model: str) -> str:
-    return ANTHROPIC_MODEL_MAP.get(model, model)
+    resolved = config_manager.resolve_model(model)
+    return ANTHROPIC_MODEL_MAP.get(resolved, resolved)
 
 
 def _blocks_to_openai(content) -> object:

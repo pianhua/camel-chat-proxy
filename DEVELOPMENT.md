@@ -19,7 +19,8 @@
 | 自动登录 | Playwright (Chromium) |
 | 前端面板 | 原生 `web/index.html` + 少量 JS |
 | 进程管理 | `start.sh` / `start.bat` |
-| 测试 | pytest + pytest-asyncio（29 个单元测试） |
+| 测试 | pytest + pytest-asyncio（53 个单元/集成测试） |
+| CI 流程 | GitHub Actions (`.github/workflows/ci.yml`) |
 
 ## 3. 目录结构
 

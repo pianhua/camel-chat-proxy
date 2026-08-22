@@ -67,28 +67,42 @@ async def discover_models(http) -> list:
         return _model_cache
     account = config_manager.get_next_account()
     if not account:
-        return _model_cache or []
-    client = get_camel_client(account)
-    if not await client.ensure_cookie(http):
-        return _model_cache or []
-    try:
+        raw = []
+    else:
+        client = get_camel_client(account)
+        acc_http = await get_http_client(account.proxy)
+        try:
+            raw = await client.get_models(acc_http)
+        except Exception:
+            raw = []
+
+    if not raw:
+        client = get_camel_client(CamelAccount(email="fallback"))
         raw = await client.get_models(http)
-        result = [
-            {
-                "id": m["id"], "object": "model", "created": 0,
-                "owned_by": m.get("providerId", "CaMeL"),
-                "context_window": _context_window(m["id"]),
-            }
-            for m in raw if m.get("type") in ("chat", "image")
-        ]
-        _model_cache, _model_cache_time = result, now
-        logger.info("[Models] Discovered %d models", len(result))
-        return result
-    except Exception as e:
-        logger.warning("[Models] Discovery failed: %s", e, exc_info=True)
-        if _model_cache:
-            return _model_cache
-        raise
+
+    result = [
+        {
+            "id": m["id"], "object": "model", "created": 0,
+            "owned_by": m.get("providerId", "CaMeL"),
+            "context_window": _context_window(m["id"]),
+        }
+        for m in raw
+    ]
+
+    # 添加配置中的 model_aliases
+    existing_ids = {m["id"] for m in result}
+    for alias, real in (config_manager.config.model_aliases or {}).items():
+        if alias not in existing_ids:
+            result.append({
+                "id": alias, "object": "model", "created": 0,
+                "owned_by": f"Alias -> {real}",
+                "context_window": _context_window(real),
+            })
+            existing_ids.add(alias)
+
+    _model_cache = result
+    _model_cache_time = now
+    return result
 
 
 def invalidate_model_cache():
@@ -104,8 +118,12 @@ async def list_models(authorization: Optional[str] = Header(None), x_api_key: Op
 
 
 @router.post("/v1/chat/completions")
-async def chat_completions(request: Request):
-    check_api_key(request.headers.get("authorization"), request.headers.get("x-api-key"))
+async def chat_completions(
+    request: Request,
+    authorization: Optional[str] = Header(None),
+    x_api_key: Optional[str] = Header(None, alias="x-api-key"),
+):
+    check_api_key(authorization, x_api_key)
     body = await request.json()
     model = body.get("model", "claude-opus-4-7")
     messages = body.get("messages", [])
@@ -113,7 +131,6 @@ async def chat_completions(request: Request):
     if not messages:
         raise HTTPException(status_code=400, detail={"error": {"message": "messages required"}})
 
-    http = await get_http_client()
     web_search = bool(body.get("web_search", config_manager.config.web_search))
 
     # 专家模式采样参数透传（CaMeL /api/chat/completion 支持 sampling 对象，字段为驼峰命名）
@@ -123,28 +140,30 @@ async def chat_completions(request: Request):
                  ("presencePenalty", body.get("presence_penalty"))):
         if v is not None:
             sampling[k] = v
-    message_mode = body.get("message_mode", config_manager.config.message_mode or "auto")
+    message_mode = body.get("message_mode", config_manager.config.message_mode or "native")
 
     excluded: set = set()
     attempt = 0
     while True:
-        account, camel = await pick_ready_account(http, exclude=excluded)
+        account, camel = await pick_ready_account(exclude=excluded)
+        account_http = await get_http_client(account.proxy)
         try:
-            session_id = await session_pool.get_session(http, camel, model, account.email)
-            payload = await build_payload(http, camel, messages, model, session_id, web_search,
+            resolved_model = config_manager.resolve_model(model)
+            session_id = await session_pool.get_session(account_http, camel, resolved_model, account.email)
+            payload = await build_payload(account_http, camel, messages, model, session_id, web_search,
                                           sampling=sampling or None, message_mode=message_mode)
             session_pool.record_turn(account.email)
             request_id = str(uuid.uuid4())
 
             async def _after_first_reply():
                 if payload.get("userText"):
-                    await session_pool.sync_title(http, camel, account.email, payload["userText"])
+                    await session_pool.sync_title(account_http, camel, account.email, payload["userText"])
 
             if stream:
                 async def _stream():
                     try:
                         first = True
-                        async for chunk in camel.stream_chat(http, payload):
+                        async for chunk in camel.stream_chat(account_http, payload):
                             if first:
                                 first = False
                                 await _after_first_reply()
@@ -163,10 +182,11 @@ async def chat_completions(request: Request):
                 return StreamingResponse(_stream(), media_type="text/event-stream")
 
             try:
-                text = await camel.chat_completion(http, payload)
+                text = await camel.chat_completion(account_http, payload)
                 await _after_first_reply()
             except CamelAPIError as e:
                 await account_pool.mark_failed(account)
+                await account_pool.release(account)
                 if attempt == 0 and e.status_code >= 500:
                     excluded.add(account.email)
                     raise _RetryRequest()
@@ -179,7 +199,6 @@ async def chat_completions(request: Request):
                 "usage": _estimate_usage(payload, text),
             }
         except _RetryRequest:
-            await account_pool.release(account)
             attempt += 1
             continue
         except HTTPException:

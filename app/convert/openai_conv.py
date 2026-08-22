@@ -2,6 +2,7 @@
 
 import re
 
+from app.core.config import config_manager
 from app.camel.client import new_uuid
 from .attachments import resolve_image_to_data_url, resolve_file_to_text
 
@@ -107,6 +108,7 @@ async def _convert_one(http, camel, msg: dict) -> tuple[dict, bool, str]:
 async def build_payload(http, camel, messages: list, model: str, session_id: str, web_search: bool = False,
                         sampling: dict | None = None, message_mode: str = "auto") -> dict:
     """OpenAI messages → CaMeL completion payload（完整新对象，不污染入参）。"""
+    resolved_model = config_manager.resolve_model(model)
     system = extract_system(messages)
     convo, has_attach, user_text = [], False, ""
     for m in messages:
@@ -120,12 +122,12 @@ async def build_payload(http, camel, messages: list, model: str, session_id: str
     if system:
         convo.insert(0, {"role": "system", "content": system})
 
-    if _needs_compact(model, message_mode) and len(convo) > 1:
+    if _needs_compact(resolved_model, message_mode) and len(convo) > 1:
         convo = _compact_convo(convo, system)
 
     payload = {
         "messages": convo,
-        "model": model,
+        "model": resolved_model,
         "providerId": "CaMeL",
         "sessionId": session_id,
         "userMessageId": new_uuid(),
@@ -137,8 +139,7 @@ async def build_payload(http, camel, messages: list, model: str, session_id: str
         "useCamelGroup": False,
         "camelGroup": "default",
     }
-    # 专家模式采样参数（浏览器实测 /api/chat/completion 支持 sampling 对象）
-    if sampling:
+    if sampling is not None:
         payload["sampling"] = sampling
     return payload
 

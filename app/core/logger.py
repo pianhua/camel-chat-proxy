@@ -29,10 +29,22 @@ class _RingBufferHandler(logging.Handler):
             pass
 
 
+from logging.handlers import RotatingFileHandler
+
+_configure_done = False
+
+
 def _configure():
+    global _configure_done
+    if _configure_done:
+        return
+    _configure_done = True
+
     level = _LOG_LEVELS.get(os.environ.get("CAMEL_LOG_LEVEL", "INFO").upper(), logging.INFO)
     root = logging.getLogger()
     root.setLevel(level)
+    formatter = logging.Formatter("%(asctime)s %(levelname)s [%(name)s] %(message)s", datefmt="%H:%M:%S")
+
     # 控制台输出
     logging.basicConfig(
         level=level,
@@ -40,12 +52,25 @@ def _configure():
         datefmt="%H:%M:%S",
         force=True,
     )
+
     # 内存环形缓冲（避免重复挂载，例如热重载/重复导入）
     if not any(isinstance(h, _RingBufferHandler) for h in root.handlers):
-        handler = _RingBufferHandler()
-        handler.setFormatter(logging.Formatter(
-            "%(asctime)s %(levelname)s [%(name)s] %(message)s", datefmt="%H:%M:%S"))
-        root.addHandler(handler)
+        ring_handler = _RingBufferHandler()
+        ring_handler.setFormatter(formatter)
+        root.addHandler(ring_handler)
+
+    # 滚动文件日志（默认 proxy.log，10MB 滚动，保留 3 份；CAMEL_LOG_FILE=none 可禁用）
+    log_file = os.environ.get("CAMEL_LOG_FILE", "proxy.log")
+    if log_file and log_file.lower() != "none":
+        if not any(isinstance(h, RotatingFileHandler) for h in root.handlers):
+            try:
+                file_handler = RotatingFileHandler(
+                    log_file, maxBytes=10 * 1024 * 1024, backupCount=3, encoding="utf-8"
+                )
+                file_handler.setFormatter(formatter)
+                root.addHandler(file_handler)
+            except Exception:
+                pass
 
 
 _configure()

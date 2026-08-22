@@ -3,327 +3,1375 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>CaMeL Chat Proxy · 管理面板</title>
+<title>CaMeL Chat Proxy · 对齐控制台</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
-:root{
-  --bg:#faf3ea; --bg2:#f3e9dc; --card:#fffdf9; --ink:#4a3826; --ink2:#8a7157;
-  --primary:#c98a5e; --primary-d:#b06f42; --accent:#e0a96d;
-  --ok:#3d8b5f; --warn:#c98a2d; --bad:#c2554a; --line:#e8d9c6;
-  --radius:14px; --shadow:0 2px 10px rgba(90,60,20,.07);
+:root {
+  --bg-base: #0b0f19;
+  --bg-surface: #111827;
+  --bg-card: rgba(17, 24, 39, 0.75);
+  --bg-card-hover: rgba(31, 41, 55, 0.85);
+  --bg-elevated: #1f2937;
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --border-focus: rgba(234, 88, 12, 0.5);
+  
+  --primary: #ea580c;
+  --primary-hover: #f97316;
+  --primary-light: rgba(234, 88, 12, 0.15);
+  --primary-glow: rgba(234, 88, 12, 0.35);
+  --accent: #f59e0b;
+  
+  --text-main: #f8fafc;
+  --text-muted: #94a3b8;
+  --text-dim: #64748b;
+  
+  --ok: #10b981;
+  --ok-bg: rgba(16, 185, 129, 0.15);
+  --ok-border: rgba(16, 185, 129, 0.3);
+  
+  --warn: #f59e0b;
+  --warn-bg: rgba(245, 158, 11, 0.15);
+  --warn-border: rgba(245, 158, 11, 0.3);
+  
+  --bad: #ef4444;
+  --bad-bg: rgba(239, 68, 68, 0.15);
+  --bad-border: rgba(239, 68, 68, 0.3);
+  
+  --info: #38bdf8;
+  --info-bg: rgba(56, 189, 248, 0.15);
+  
+  --purple: #a855f7;
+  --purple-bg: rgba(168, 85, 247, 0.15);
+  
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 18px;
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.25);
+  --shadow-md: 0 8px 24px -4px rgba(0, 0, 0, 0.4);
+  --shadow-glow: 0 0 30px -5px var(--primary-glow);
 }
-*{box-sizing:border-box;margin:0;padding:0}
-body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;background:linear-gradient(160deg,var(--bg),var(--bg2));color:var(--ink);min-height:100vh}
-header{background:var(--card);border-bottom:1px solid var(--line);padding:0 20px;height:60px;display:flex;align-items:center;gap:16px;position:sticky;top:0;z-index:50;box-shadow:var(--shadow)}
-.logo{display:flex;align-items:center;gap:10px;font-weight:700;font-size:18px;color:var(--primary-d);white-space:nowrap}
-.logo .cam{font-size:22px}
-nav{display:flex;gap:4px;flex:1;overflow-x:auto}
-nav button{background:none;border:none;padding:8px 14px;border-radius:10px;font-size:14px;color:var(--ink2);cursor:pointer;white-space:nowrap}
-nav button:hover{background:var(--bg);color:var(--primary-d)}
-nav button.active{background:var(--primary);color:#fff}
-.user-area{margin-left:auto;display:flex;align-items:center;gap:8px;color:var(--ink2);font-size:13px}
-main{max-width:1100px;margin:24px auto;padding:0 16px}
-.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:20px;margin-bottom:18px;box-shadow:var(--shadow)}
-.card h2{font-size:16px;margin-bottom:14px;color:var(--primary-d);display:flex;align-items:center;gap:8px}
-.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px}
-.stat{background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:14px}
-.stat .num{font-size:26px;font-weight:700;color:var(--primary-d)}
-.stat .lbl{font-size:12px;color:var(--ink2);margin-top:4px}
-table{width:100%;border-collapse:collapse;font-size:13px}
-th{text-align:left;padding:9px 10px;color:var(--ink2);font-weight:600;border-bottom:2px solid var(--line)}
-td{padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:middle}
-tr:hover td{background:#fffaf2}
-.badge{display:inline-block;padding:2px 10px;border-radius:20px;font-size:12px;font-weight:600}
-.b-ok{background:#e4f3ea;color:var(--ok)} .b-bad{background:#fae6e2;color:var(--bad)} .b-warn{background:#faf0dc;color:var(--warn)}
-button.btn{background:var(--primary);color:#fff;border:none;padding:7px 14px;border-radius:9px;font-size:13px;cursor:pointer;transition:.15s}
-button.btn:hover{background:var(--primary-d)}
-button.btn.sm{padding:4px 10px;font-size:12px;border-radius:7px}
-button.btn.ghost{background:none;color:var(--primary-d);border:1px solid var(--primary);}
-button.btn.ghost:hover{background:#fdf1e3}
-button.btn.danger{background:var(--bad)} button.btn.danger:hover{background:#a94338}
-button.btn:disabled{opacity:.5;cursor:not-allowed}
-input[type=text],input[type=password],textarea,select{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:9px;font-size:13px;background:#fffdf9;color:var(--ink);font-family:inherit}
-textarea{font-family:ui-monospace,Consolas,monospace;font-size:12px;line-height:1.5;resize:vertical}
-.form-row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
-.form-row>*{flex:1;min-width:150px}
-.muted{color:var(--ink2);font-size:12px}
-.mono{font-family:ui-monospace,Consolas,monospace;font-size:12px}
-#toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#3d2f1f;color:#fff;padding:10px 22px;border-radius:10px;font-size:13px;opacity:0;transition:.25s;pointer-events:none;z-index:99;max-width:80vw}
-#toast.show{opacity:.95}
-#loginScreen{max-width:380px;margin:12vh auto;padding:30px;background:var(--card);border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow)}
-#loginScreen h1{font-size:20px;color:var(--primary-d);margin-bottom:6px}
-#loginScreen p{color:var(--ink2);font-size:13px;margin-bottom:18px}
-.hidden{display:none}
-.empty{padding:30px;text-align:center;color:var(--ink2);font-size:13px}
-#logsBox{background:#2b2118;color:#e8d9c6;border-radius:12px;padding:14px;font-family:ui-monospace,Consolas,monospace;font-size:12px;line-height:1.7;height:440px;overflow:auto}
-#logsBox .lwarn{color:#f0c36d} #logsBox .lerr{color:#f08a7a}
-.model-tag{display:inline-block;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:6px 12px;margin:4px;font-size:12px}
-.model-tag b{color:var(--primary-d)}
-.model-tag .ctx{color:var(--ink2);font-size:11px}
-@media(max-width:640px){main{padding:0 8px}header{height:auto;flex-wrap:wrap;padding:10px}nav{order:3;width:100%}nav button{flex:1}}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", sans-serif;
+  background-color: var(--bg-base);
+  background-image: 
+    radial-gradient(at 0% 0%, rgba(234, 88, 12, 0.12) 0px, transparent 50%),
+    radial-gradient(at 100% 100%, rgba(245, 158, 11, 0.08) 0px, transparent 50%),
+    radial-gradient(at 50% 50%, rgba(15, 23, 42, 0.5) 0px, transparent 100%);
+  background-attachment: fixed;
+  color: var(--text-main);
+  min-height: 100vh;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+header {
+  background: rgba(15, 23, 42, 0.85);
+  backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--border-subtle);
+  padding: 0 24px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  box-shadow: var(--shadow-sm);
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 800;
+  font-size: 18px;
+  letter-spacing: -0.02em;
+  color: #fff;
+  white-space: nowrap;
+}
+
+.logo-icon {
+  width: 34px;
+  height: 34px;
+  background: linear-gradient(135deg, var(--primary), var(--accent));
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  box-shadow: 0 0 15px var(--primary-glow);
+}
+
+.logo-badge {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 20px;
+  background: var(--primary-light);
+  color: var(--primary-hover);
+  border: 1px solid var(--border-focus);
+}
+
+.auth-box {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.auth-box input {
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-main);
+  padding: 7px 14px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-family: 'JetBrains Mono', monospace;
+  outline: none;
+  width: 140px;
+  transition: all 0.2s;
+}
+
+.auth-box input:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px var(--primary-light);
+  width: 180px;
+}
+
+.btn {
+  background: var(--primary);
+  color: #fff;
+  border: none;
+  padding: 8px 16px;
+  border-radius: var(--radius-sm);
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 2px 8px var(--primary-glow);
+  text-decoration: none;
+}
+
+.btn:hover {
+  background: var(--primary-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px var(--primary-glow);
+}
+
+.btn-secondary {
+  background: var(--bg-elevated);
+  color: var(--text-main);
+  border: 1px solid var(--border-subtle);
+  box-shadow: none;
+}
+
+.btn-secondary:hover {
+  background: var(--bg-card-hover);
+  border-color: rgba(255, 255, 255, 0.2);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.btn-sm { padding: 4px 10px; font-size: 12px; border-radius: 6px; }
+.btn-danger { background: var(--bad); box-shadow: 0 2px 8px var(--bad-bg); }
+.btn-danger:hover { background: #dc2626; }
+.btn-success { background: var(--ok); box-shadow: 0 2px 8px var(--ok-bg); }
+.btn-success:hover { background: #059669; }
+
+nav {
+  display: flex;
+  gap: 6px;
+  padding: 16px 24px 0;
+  max-width: 1400px;
+  margin: 0 auto;
+  overflow-x: auto;
+}
+
+.nav-tab {
+  padding: 10px 18px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.nav-tab:hover {
+  color: var(--text-main);
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+}
+
+.nav-tab.active {
+  color: var(--primary-hover);
+  border-bottom-color: var(--primary);
+  background: rgba(234, 88, 12, 0.06);
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+}
+
+main {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 20px 24px 40px;
+}
+
+.tab-content { display: none; }
+.tab-content.active { display: block; animation: fadeIn 0.25s ease-out; }
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.stat-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 20px;
+  backdrop-filter: blur(12px);
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+}
+
+.stat-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; height: 2px;
+  background: linear-gradient(90deg, transparent, var(--primary), transparent);
+  opacity: 0.3;
+}
+
+.stat-label {
+  font-size: 13px;
+  color: var(--text-muted);
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.stat-value {
+  font-size: 28px;
+  font-weight: 800;
+  margin: 8px 0 4px;
+  letter-spacing: -0.03em;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.stat-sub { font-size: 12px; color: var(--text-dim); }
+
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  margin-bottom: 24px;
+  backdrop-filter: blur(12px);
+  box-shadow: var(--shadow-sm);
+}
+
+.card-title {
+  font-size: 17px;
+  font-weight: 700;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  text-align: left;
+}
+
+th {
+  padding: 12px 16px;
+  background: rgba(0, 0, 0, 0.25);
+  color: var(--text-muted);
+  font-weight: 600;
+  border-bottom: 1px solid var(--border-subtle);
+  white-space: nowrap;
+}
+
+td {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border-subtle);
+  vertical-align: middle;
+}
+
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: rgba(255, 255, 255, 0.02); }
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.badge-ok { background: var(--ok-bg); color: var(--ok); border: 1px solid var(--ok-border); }
+.badge-bad { background: var(--bad-bg); color: var(--bad); border: 1px solid var(--bad-border); }
+.badge-warn { background: var(--warn-bg); color: var(--warn); border: 1px solid var(--warn-border); }
+.badge-info { background: var(--info-bg); color: var(--info); border: 1px solid rgba(56,189,248,0.3); }
+.badge-purple { background: var(--purple-bg); color: var(--purple); border: 1px solid rgba(168,85,247,0.3); }
+
+/* Switch 开关 */
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 36px;
+  height: 20px;
+}
+.switch input { opacity: 0; width: 0; height: 0; }
+.slider {
+  position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
+  background-color: var(--bg-elevated);
+  transition: .2s; border-radius: 20px;
+  border: 1px solid var(--border-subtle);
+}
+.slider:before {
+  position: absolute; content: ""; height: 14px; width: 14px; left: 2px; bottom: 2px;
+  background-color: white; transition: .2s; border-radius: 50%;
+}
+input:checked + .slider { background-color: var(--ok); border-color: var(--ok); }
+input:checked + .slider:before { transform: translateX(16px); }
+
+/* Playground 样式 */
+.playground-container {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  gap: 20px;
+  min-height: 600px;
+}
+
+@media(max-width: 900px) {
+  .playground-container { grid-template-columns: 1fr; }
+}
+
+.chat-box {
+  display: flex;
+  flex-direction: column;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  height: 600px;
+  overflow: hidden;
+}
+
+.chat-messages {
+  flex: 1;
+  padding: 20px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.msg-bubble {
+  max-width: 85%;
+  padding: 12px 16px;
+  border-radius: var(--radius-md);
+  font-size: 14px;
+  line-height: 1.6;
+  word-break: break-word;
+  white-space: pre-wrap;
+}
+
+.msg-user {
+  align-self: flex-end;
+  background: linear-gradient(135deg, var(--primary), #c2410c);
+  color: #fff;
+  border-bottom-right-radius: 2px;
+}
+
+.msg-assistant {
+  align-self: flex-start;
+  background: var(--bg-elevated);
+  color: var(--text-main);
+  border: 1px solid var(--border-subtle);
+  border-bottom-left-radius: 2px;
+}
+
+.chat-input-area {
+  padding: 16px;
+  background: rgba(17, 24, 39, 0.8);
+  border-top: 1px solid var(--border-subtle);
+  display: flex;
+  gap: 12px;
+}
+
+.chat-input-area textarea {
+  flex: 1;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  color: var(--text-main);
+  padding: 10px 14px;
+  font-size: 14px;
+  font-family: inherit;
+  resize: none;
+  height: 48px;
+  outline: none;
+}
+
+.chat-input-area textarea:focus {
+  border-color: var(--primary);
+}
+
+.terminal-log {
+  background: #060911;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  height: 520px;
+  overflow-y: auto;
+  line-height: 1.6;
+  color: #cbd5e1;
+}
+
+.log-line { margin-bottom: 4px; }
+.log-time { color: var(--text-dim); }
+.log-info { color: #38bdf8; }
+.log-warn { color: #f59e0b; }
+.log-err { color: #ef4444; }
+
+.modal-backdrop {
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(8px);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 999;
+}
+.modal-backdrop.active { display: flex; }
+
+.modal {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  width: 90%;
+  max-width: 520px;
+  padding: 24px;
+  box-shadow: var(--shadow-md);
+}
+
+.form-group {
+  margin-bottom: 16px;
+}
+.form-group label {
+  display: block;
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+  font-weight: 500;
+}
+.form-group input, .form-group select, .form-group textarea {
+  width: 100%;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: 9px 12px;
+  color: var(--text-main);
+  font-size: 13px;
+  font-family: inherit;
+  outline: none;
+}
+.form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+  border-color: var(--primary);
+}
+
+.grid-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+}
+.model-card {
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  transition: all 0.2s;
+}
+.model-card:hover {
+  border-color: rgba(234, 88, 12, 0.3);
+  transform: translateY(-2px);
+  background: rgba(255, 255, 255, 0.02);
+}
 </style>
 </head>
 <body>
 
-<div id="loginScreen">
-  <h1>🐪 CaMeL Chat Proxy</h1>
-  <p>管理面板 · 请输入管理员密码</p>
-  <input type="password" id="pwd" placeholder="admin password" style="margin-bottom:12px">
-  <button class="btn" style="width:100%" onclick="doLogin()">进入面板</button>
-</div>
-
-<div id="app" class="hidden">
 <header>
-  <div class="logo"><span class="cam">🐪</span> CaMeL Proxy</div>
-  <nav>
-    <button data-tab="dashboard" class="active" onclick="showTab('dashboard')">总览</button>
-    <button data-tab="accounts" onclick="showTab('accounts')">账号</button>
-    <button data-tab="config" onclick="showTab('config')">配置</button>
-    <button data-tab="models" onclick="showTab('models')">模型</button>
-    <button data-tab="logs" onclick="showTab('logs')">日志</button>
-  </nav>
-  <div class="user-area"><span id="statusDot" style="width:8px;height:8px;border-radius:50%;background:var(--ok);display:inline-block"></span><span id="healthText">…</span></div>
+  <div class="logo">
+    <div class="logo-icon">🐪</div>
+    <span>CaMeL Chat Proxy</span>
+    <span class="logo-badge">Pro 2026</span>
+  </div>
+
+  <div class="auth-box">
+    <span style="font-size:12px; color:var(--text-muted);">管理密码:</span>
+    <input type="password" id="adminPwd" placeholder="Admin PWD" value="admin">
+    <button class="btn btn-sm" onclick="fetchHealth()">连接</button>
+  </div>
 </header>
 
-<main>
-  <!-- 总览 -->
-  <section id="tab-dashboard">
-    <div class="grid" id="statCards"></div>
-    <div class="card"><h2>📡 服务健康</h2><div id="healthDetail" class="muted">加载中…</div></div>
-    <div class="card">
-      <h2>⚡ 快捷操作</h2>
-      <div class="form-row">
-        <button class="btn" onclick="refreshModels()">刷新模型缓存</button>
-        <button class="btn ghost" onclick="testAccounts()">测试全部账号</button>
-        <button class="btn ghost" onclick="refreshCookies()">刷新全部 Cookie</button>
-        <button class="btn ghost" onclick="loadUsage()">查看用量</button>
-      </div>
-      <div id="usageBox" style="margin-top:14px"></div>
-    </div>
-  </section>
+<nav>
+  <button class="nav-tab active" onclick="switchTab('dashboard')">📊 运行总览</button>
+  <button class="nav-tab" onclick="switchTab('accounts')">👥 账号集群</button>
+  <button class="nav-tab" onclick="switchTab('bridge')">🌐 代理桥 (Mihomo)</button>
+  <button class="nav-tab" onclick="switchTab('playground')">🧪 API 调试器</button>
+  <button class="nav-tab" onclick="switchTab('models')">🤖 模型广场 & 别名</button>
+  <button class="nav-tab" onclick="switchTab('config')">⚙️ 全局配置</button>
+  <button class="nav-tab" onclick="switchTab('logs')">📜 实时终端日志</button>
+</nav>
 
-  <!-- 账号 -->
-  <section id="tab-accounts" class="hidden">
-    <div class="card">
-      <h2>➕ 添加账号</h2>
-      <div class="form-row">
-        <input type="text" id="newEmail" placeholder="邮箱">
-        <input type="password" id="newPwd" placeholder="密码">
-        <button class="btn" onclick="addAccount()">添加</button>
+<main>
+
+  <!-- TAB 1: 总览 -->
+  <div id="tab-dashboard" class="tab-content active">
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-label">活跃账号 / 总数 <span>🛡️</span></div>
+        <div class="stat-value" id="stat-accounts">- / -</div>
+        <div class="stat-sub">独占出口隔离调度</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">在途请求 (In-Flight) <span>⚡</span></div>
+        <div class="stat-value" id="stat-inflight">0</div>
+        <div class="stat-sub">动态槽位排队</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">就绪模型 <span>🤖</span></div>
+        <div class="stat-value" id="stat-models">17</div>
+        <div class="stat-sub">支持 Claude Fable-5 & GPT-5.6</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Mihomo 代理桥 <span>🌐</span></div>
+        <div class="stat-value" id="stat-bridge" style="font-size:20px;">未启动</div>
+        <div class="stat-sub">一号一 IP 防连坐系统</div>
       </div>
     </div>
+
     <div class="card">
-      <h2>👥 账号列表</h2>
+      <div class="card-title">
+        <span>🚀 客户端一键接入参数 (OpenAI / Claude)</span>
+        <button class="btn btn-secondary btn-sm" onclick="copyApiConfig()">复制完整配置</button>
+      </div>
+      <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px;">
+        <div style="background:rgba(0,0,0,0.25); padding:14px; border-radius:var(--radius-sm); border:1px solid var(--border-subtle);">
+          <div style="font-size:12px; color:var(--text-dim); margin-bottom:4px;">BASE URL (OpenAI 格式)</div>
+          <code id="displayBaseUrl" style="font-family:'JetBrains Mono'; color:var(--info);">http://127.0.0.1:8000/v1</code>
+        </div>
+        <div style="background:rgba(0,0,0,0.25); padding:14px; border-radius:var(--radius-sm); border:1px solid var(--border-subtle);">
+          <div style="font-size:12px; color:var(--text-dim); margin-bottom:4px;">API KEY</div>
+          <code id="displayApiKey" style="font-family:'JetBrains Mono'; color:var(--ok);">sk-camel</code>
+        </div>
+        <div style="background:rgba(0,0,0,0.25); padding:14px; border-radius:var(--radius-sm); border:1px solid var(--border-subtle);">
+          <div style="font-size:12px; color:var(--text-dim); margin-bottom:4px;">兼容工具</div>
+          <span style="font-size:12px; color:var(--text-muted);">SillyTavern, NextChat, Claude Code, CherryStudio, Chatbox</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">
+        <span>👥 账号健康与并发概览</span>
+        <button class="btn btn-secondary btn-sm" onclick="fetchHealth()">🔄 刷新状态</button>
+      </div>
       <table>
-        <thead><tr><th>邮箱</th><th>状态</th><th>登录时间</th><th>最近测试</th><th style="width:220px">操作</th></tr></thead>
-        <tbody id="accountsBody"></tbody>
+        <thead>
+          <tr>
+            <th>账号</th>
+            <th>启用</th>
+            <th>Cookie 状态</th>
+            <th>出口 Proxy / 节点</th>
+            <th>在途并发</th>
+            <th>冷却倒计时</th>
+            <th>最近校验</th>
+          </tr>
+        </thead>
+        <tbody id="overviewTableBody">
+          <tr><td colspan="7" style="text-align:center; color:var(--text-dim);">加载中...</td></tr>
+        </tbody>
       </table>
     </div>
-  </section>
+  </div>
 
-  <!-- 配置 -->
-  <section id="tab-config" class="hidden">
+  <!-- TAB 2: 账号管理 -->
+  <div id="tab-accounts" class="tab-content">
     <div class="card">
-      <h2>⚙️ 配置 (config.json)</h2>
-      <p class="muted" style="margin-bottom:12px">直接编辑 JSON，保存后立即生效。账号密码字段会以明文写入 config.json。</p>
-      <textarea id="configJson" rows="18" spellcheck="false"></textarea>
-      <div class="form-row" style="margin-top:14px">
-        <button class="btn" onclick="saveConfig()">💾 保存配置</button>
-        <button class="btn ghost" onclick="reloadConfig()">重新加载</button>
+      <div class="card-title">
+        <span>👥 账号列表与独占配置</span>
+        <div style="display:flex; gap:8px;">
+          <button class="btn btn-secondary btn-sm" onclick="testAllAccounts()">⚡ 全量测活</button>
+          <button class="btn btn-sm" onclick="openAddAccountModal()">+ 添加账号</button>
+        </div>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>启停</th>
+            <th>邮箱账号</th>
+            <th>状态</th>
+            <th>Cookie 录入</th>
+            <th>出口代理 (Proxy / Node)</th>
+            <th>在途</th>
+            <th>操作</th>
+          </tr>
+        </thead>
+        <tbody id="accountsTableBody">
+          <tr><td colspan="7" style="text-align:center; color:var(--text-dim);">加载中...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- TAB 3: 代理桥 -->
+  <div id="tab-bridge" class="tab-content">
+    <div class="card">
+      <div class="card-title">
+        <span>🌐 Mihomo 代理桥（一号一 IP 防连坐核心）</span>
+        <div style="display:flex; gap:8px; align-items:center;">
+          <span style="font-size:13px; color:var(--text-muted);">启用代理桥:</span>
+          <label class="switch">
+            <input type="checkbox" id="bridgeSwitch" onchange="toggleBridge(this.checked)">
+            <span class="slider"></span>
+          </label>
+        </div>
+      </div>
+      <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:16px; margin-bottom:20px;">
+        <div style="background:rgba(0,0,0,0.2); padding:12px; border-radius:var(--radius-sm);">
+          <div style="font-size:11px; color:var(--text-dim);">内核状态</div>
+          <div id="bridgeStatusText" style="font-weight:700; margin-top:2px;">未运行</div>
+        </div>
+        <div style="background:rgba(0,0,0,0.2); padding:12px; border-radius:var(--radius-sm);">
+          <div style="font-size:11px; color:var(--text-dim);">内核路径</div>
+          <div id="bridgeBinPath" style="font-size:12px; font-family:'JetBrains Mono'; margin-top:2px; word-break:break-all;">自动探测</div>
+        </div>
+        <div style="background:rgba(0,0,0,0.2); padding:12px; border-radius:var(--radius-sm);">
+          <div style="font-size:11px; color:var(--text-dim);">起始端口 / API</div>
+          <div style="font-family:'JetBrains Mono'; font-weight:700; margin-top:2px;">10801 / 19090</div>
+        </div>
+      </div>
+
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+        <h4 style="font-size:14px; font-weight:700;">📡 机场订阅列表</h4>
+        <button class="btn btn-sm" onclick="openAddSubModal()">+ 添加订阅</button>
+      </div>
+      <div id="subscriptionsList" style="display:flex; flex-direction:column; gap:8px; margin-bottom:24px;"></div>
+
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+        <h4 style="font-size:14px; font-weight:700;">🧭 节点列表与延迟</h4>
+        <div style="display:flex; gap:8px;">
+          <button class="btn btn-secondary btn-sm" onclick="testBridgeDelays()">⚡ 批量测速</button>
+          <button class="btn btn-success btn-sm" onclick="assignBridgeNodes()">🎯 一键分配账号绑定</button>
+        </div>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>节点名称</th>
+            <th>协议类型</th>
+            <th>服务器 / 远程端口</th>
+            <th>本地端口</th>
+            <th>延迟</th>
+            <th>已绑定账号</th>
+          </tr>
+        </thead>
+        <tbody id="bridgeNodesTableBody">
+          <tr><td colspan="6" style="text-align:center; color:var(--text-dim);">暂无节点，请添加订阅</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- TAB 4: API 调试器 (Playground) -->
+  <div id="tab-playground" class="tab-content">
+    <div class="playground-container">
+      <!-- 调参侧栏 -->
+      <div class="card" style="margin-bottom:0; padding:18px;">
+        <h3 style="font-size:15px; font-weight:700; margin-bottom:16px;">🧪 调试配置</h3>
+        <div class="form-group">
+          <label>选择模型</label>
+          <select id="playModel">
+            <option value="claude-opus-4-7">Claude Opus 4.7</option>
+            <option value="claude-fable-5">Claude Fable 5 (Mythos 旗舰)</option>
+            <option value="claude-sonnet-5">Claude Sonnet 5</option>
+            <option value="claude-haiku-4-5">Claude Haiku 4.5</option>
+            <option value="gpt-5.6-sol">GPT-5.6 Sol (长思考)</option>
+            <option value="gpt-5.5">GPT-5.5</option>
+            <option value="gemini-3.1-pro">Gemini 3.1 Pro</option>
+            <option value="deepseek-v4-pro">DeepSeek V4 Pro</option>
+            <option value="kimi-k3">Kimi K3</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>System Prompt (系统人设)</label>
+          <textarea id="playSystem" rows="3" placeholder="你是 CaMeL 助手..."></textarea>
+        </div>
+        <div class="form-group">
+          <label>Temperature (温度: <span id="tempVal">0.7</span>)</label>
+          <input type="range" min="0" max="1" step="0.1" value="0.7" oninput="document.getElementById('tempVal').innerText=this.value">
+        </div>
+        <div class="form-group">
+          <label><input type="checkbox" id="playSearch"> 开启联网搜索 (Web Search)</label>
+        </div>
+        <div style="font-size:12px; color:var(--text-dim); margin-top:20px; line-height:1.6;">
+          💡 采用流式 SSE 对话打字机输出，可实时测试首字延迟 (TTFT) 与回复质量。
+        </div>
+      </div>
+
+      <!-- 对话交互区 -->
+      <div class="chat-box">
+        <div class="chat-messages" id="playMessages">
+          <div class="msg-bubble msg-assistant">你好！我是 CaMeL Chat Proxy 调试器。请在下方输入问题测试模型流式对话与首字响应。</div>
+        </div>
+        <div id="playMetrics" style="font-size:11px; color:var(--text-dim); padding:4px 16px; background:rgba(0,0,0,0.4); display:none;">
+          首字延迟 (TTFT): <span id="metricTTFT" style="color:var(--ok);">-</span> | 输出长度: <span id="metricLen">-</span> 字符
+        </div>
+        <div class="chat-input-area">
+          <textarea id="playInput" placeholder="输入消息 (Enter 发送, Shift+Enter 换行)..." onkeydown="handlePlayKeyDown(event)"></textarea>
+          <button class="btn" id="playSendBtn" onclick="sendPlaygroundMessage()">发送</button>
+        </div>
       </div>
     </div>
-  </section>
+  </div>
 
-  <!-- 模型 -->
-  <section id="tab-models" class="hidden">
+  <!-- TAB 5: 模型广场 & 别名 -->
+  <div id="tab-models" class="tab-content">
     <div class="card">
-      <h2>🤖 可用模型 <span class="muted" id="modelCount"></span></h2>
-      <div class="form-row" style="margin-bottom:12px">
-        <button class="btn" onclick="refreshModels()">刷新模型缓存</button>
+      <div class="card-title">
+        <span>🔀 模型别名映射 (Model Aliases)</span>
+        <button class="btn btn-sm" onclick="saveModelAliases()">保存别名配置</button>
       </div>
-      <div id="modelsBox"></div>
+      <p style="font-size:13px; color:var(--text-muted); margin-bottom:16px;">
+        外部客户端请求别名模型（如 <code>gpt-4o</code>、<code>claude-3-7-sonnet</code>）时，代理将自动透明路由到对应的真实 CaMeL 模型。
+      </p>
+      <div class="form-group">
+        <textarea id="modelAliasesJson" rows="6" style="font-family:'JetBrains Mono'; font-size:13px;"></textarea>
+      </div>
     </div>
-  </section>
 
-  <!-- 日志 -->
-  <section id="tab-logs" class="hidden">
     <div class="card">
-      <h2>📜 实时日志</h2>
-      <div class="form-row" style="margin-bottom:12px">
-        <button class="btn sm" id="logPauseBtn" onclick="toggleLogPause()">⏸ 暂停</button>
-        <button class="btn sm ghost" onclick="clearLogs()">清屏</button>
-        <span class="muted">自动刷新 3s · 仅保留最近 300 条</span>
+      <div class="card-title">
+        <span>🤖 官方开放的 17 款最新模型列表</span>
+        <button class="btn btn-secondary btn-sm" onclick="loadModelsTab()">🔄 刷新列表</button>
       </div>
-      <div id="logsBox"></div>
+      <div class="grid-cards" id="modelsGrid"></div>
     </div>
-  </section>
+  </div>
+
+  <!-- TAB 6: 全局配置 -->
+  <div id="tab-config" class="tab-content">
+    <div class="card">
+      <div class="card-title">
+        <span>⚙️ 全局配置 (config.json)</span>
+        <div style="display:flex; gap:8px;">
+          <button class="btn btn-secondary btn-sm" onclick="formatConfigJson()">格式化 JSON</button>
+          <button class="btn btn-sm" onclick="saveFullConfig()">保存并热生效</button>
+        </div>
+      </div>
+      <div class="form-group">
+        <textarea id="fullConfigTextarea" rows="22" style="font-family:'JetBrains Mono'; font-size:13px; line-height:1.5;"></textarea>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB 7: 实时日志 -->
+  <div id="tab-logs" class="tab-content">
+    <div class="card">
+      <div class="card-title">
+        <span>📜 实时控制台日志</span>
+        <div style="display:flex; gap:8px;">
+          <button class="btn btn-secondary btn-sm" onclick="toggleLogAutoScroll()" id="logScrollBtn">自动滚动: 开</button>
+          <button class="btn btn-secondary btn-sm" onclick="copyAllLogs()">复制全部</button>
+          <button class="btn btn-secondary btn-sm" onclick="refreshLogs()">刷新</button>
+        </div>
+      </div>
+      <div class="terminal-log" id="terminalLog"></div>
+    </div>
+  </div>
+
 </main>
+
+<!-- Modal: 添加账号 -->
+<div class="modal-backdrop" id="addAccountModal">
+  <div class="modal">
+    <h3 style="font-size:16px; font-weight:700; margin-bottom:16px;">+ 添加 CaMeL 账号</h3>
+    <div class="form-group">
+      <label>登录邮箱 (Email)</label>
+      <input type="email" id="modalEmail" placeholder="user@example.com">
+    </div>
+    <div class="form-group">
+      <label>密码 (留空则使用手动 Cookie)</label>
+      <input type="password" id="modalPassword" placeholder="******">
+    </div>
+    <div class="form-group">
+      <label>手动 Cookie (camel_session) <span class="badge badge-info">推荐·零风控</span></label>
+      <input type="text" id="modalCookie" placeholder="粘贴 camel_session Cookie 值">
+    </div>
+    <div class="form-group">
+      <label>独立 Proxy (可选, 如 socks5://127.0.0.1:10801)</label>
+      <input type="text" id="modalProxy" placeholder="socks5://127.0.0.1:10801">
+    </div>
+    <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:20px;">
+      <button class="btn btn-secondary btn-sm" onclick="closeModal('addAccountModal')">取消</button>
+      <button class="btn btn-sm" onclick="submitAddAccount()">确认添加</button>
+    </div>
+  </div>
 </div>
 
-<div id="toast"></div>
+<!-- Modal: 手动 Cookie 录入 -->
+<div class="modal-backdrop" id="cookieModal">
+  <div class="modal">
+    <h3 style="font-size:16px; font-weight:700; margin-bottom:16px;">🔑 录入 Cookie (<span id="cookieModalEmail"></span>)</h3>
+    <div class="form-group">
+      <label>粘贴 camel_session Cookie 值</label>
+      <textarea id="cookieModalValue" rows="4" placeholder="在此粘贴在浏览器已登录页面抓取到的 camel_session 值"></textarea>
+    </div>
+    <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:20px;">
+      <button class="btn btn-secondary btn-sm" onclick="closeModal('cookieModal')">取消</button>
+      <button class="btn btn-sm" onclick="submitCookieModal()">保存并生效</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: 添加订阅 -->
+<div class="modal-backdrop" id="addSubModal">
+  <div class="modal">
+    <h3 style="font-size:16px; font-weight:700; margin-bottom:16px;">📡 添加机场订阅链接</h3>
+    <div class="form-group">
+      <label>订阅备注名称</label>
+      <input type="text" id="subModalName" placeholder="例如：主用机场">
+    </div>
+    <div class="form-group">
+      <label>订阅 URL / Clash YAML / Base64</label>
+      <input type="text" id="subModalUrl" placeholder="https://api.v1.sub/...">
+    </div>
+    <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:20px;">
+      <button class="btn btn-secondary btn-sm" onclick="closeModal('addSubModal')">取消</button>
+      <button class="btn btn-sm" onclick="submitAddSub()">拉取并解析节点</button>
+    </div>
+  </div>
+</div>
 
 <script>
-const PWD_KEY = "camel_admin_pwd";
-let PWD = sessionStorage.getItem(PWD_KEY) || "";
-let logTimer = null, logPaused = false;
+let currentTab = 'dashboard';
+let logAutoScroll = true;
+let playConversation = [];
+let fullConfigData = {};
 
-/* ---------- 工具 ---------- */
-function toast(msg){const t=document.getElementById("toast");t.textContent=msg;t.classList.add("show");setTimeout(()=>t.classList.remove("show"),2200);}
-async function api(path, method="GET", body=null){
-  const opts={method,headers:{"x-admin-password":PWD}};
-  if(body!==null){opts.headers["Content-Type"]="application/json";opts.body=JSON.stringify(body);}
-  const r=await fetch(path,opts);
-  let data=null;try{data=await r.json();}catch(e){data={error:String(r.status)};}
-  if(r.status===401||r.status===403){document.getElementById("app").classList.add("hidden");document.getElementById("loginScreen").classList.remove("hidden");toast("密码错误或已失效，请重新登录");return null;}
-  if(!r.ok){toast((data&&(data.detail||data.error))||("请求失败 "+r.status));return null;}
-  return data;
-}
-function esc(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
-
-/* ---------- 登录 ---------- */
-function doLogin(){
-  PWD=document.getElementById("pwd").value.trim();
-  if(!PWD){toast("请输入密码");return;}
-  sessionStorage.setItem(PWD_KEY,PWD);
-  document.getElementById("loginScreen").classList.add("hidden");
-  document.getElementById("app").classList.remove("hidden");
-  showTab("dashboard");
-  toast("欢迎回来，主人~ 🐪");
+function getAuthHeader() {
+  const pwd = document.getElementById('adminPwd').value.trim();
+  return { 'x-admin-password': pwd, 'Content-Type': 'application/json' };
 }
 
-/* ---------- Tab ---------- */
-function showTab(name){
-  document.querySelectorAll("nav button").forEach(b=>b.classList.toggle("active",b.dataset.tab===name));
-  ["dashboard","accounts","config","models","logs"].forEach(t=>document.getElementById("tab-"+t).classList.toggle("hidden",t!==name));
-  if(name==="dashboard")loadDashboard();
-  if(name==="accounts")loadAccounts();
-  if(name==="config")loadConfig();
-  if(name==="models")loadModels();
-  if(name==="logs")startLogs();
-}
-function badge(ok){return ok?'<span class="badge b-ok">✓ 可用</span>':'<span class="badge b-bad">✗ 失效</span>';}
+function switchTab(tabId) {
+  currentTab = tabId;
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+  
+  const btn = Array.from(document.querySelectorAll('.nav-tab')).find(b => b.getAttribute('onclick')?.includes(tabId));
+  if (btn) btn.classList.add('active');
+  const target = document.getElementById('tab-' + tabId);
+  if (target) target.classList.add('active');
 
-/* ---------- 总览 ---------- */
-async function loadDashboard(){
-  const h=await api("/health");
-  if(!h)return;
-  const accounts=h.accounts||[];
-  const okN=accounts.filter(a=>a.is_valid).length;
-  document.getElementById("statCards").innerHTML=[
-    {n:accounts.length,l:"账号总数"},
-    {n:okN,l:"可用账号"},
-    {n:h.model_count??"–",l:"缓存模型"},
-    {n:h.models_cached?"已缓存":"未缓存",l:"模型缓存状态"}
-  ].map(s=>`<div class="stat"><div class="num">${s.n}</div><div class="lbl">${s.l}</div></div>`).join("");
-  const lines=accounts.map(a=>`<div>${esc(a.email)} · ${badge(a.is_valid)} · Cookie:${a.cookie_ready?"就绪":"未就绪"} · 登录:${esc(a.login_time||"—")}</div>`).join("")||'<div class="muted">暂无账号</div>';
-  document.getElementById("healthDetail").innerHTML=`<div style="margin-bottom:6px">服务状态：<span class="badge b-ok">运行中</span></div>${lines}`;
-}
-async function testAccounts(){toast("正在测试全部账号…");const d=await api("/admin/test-accounts","POST");if(d){toast("测试完成");loadDashboard();}}
-async function refreshCookies(){toast("正在刷新全部 Cookie…");const d=await api("/admin/refresh-cookies","POST");if(d){toast("刷新完成");loadDashboard();}}
-async function loadUsage(){
-  const d=await api("/admin/usage");
-  if(!d)return;
-  const box=document.getElementById("usageBox");
-  const rows=(d.accounts||[]).map(a=>{
-    const u=a.usage||{};const s=a.search||{};
-    const boost=u.boost||{};
-    return `<div style="padding:6px 0;border-bottom:1px solid var(--line)"><b>${esc(a.email)}</b> · 等级 ${esc((u.tier&&u.tier.name)||"—")} · 周用量 ${u.weeklyCapPercent??"—"}% · 联网 ${s.used??"—"}/${s.limit??"—"} · Boost ${boost.boostsRemaining??"—"}/${boost.boostLimit??"—"} ${a.error?'<span class="badge b-bad">'+esc(a.error)+'</span>':""}</div>`;
-  }).join("")||'<div class="muted">暂无数据</div>';
-  box.innerHTML="<h3 style='font-size:14px;margin-bottom:6px'>📊 用量（30 分钟缓存）</h3>"+rows;
+  if (tabId === 'dashboard' || tabId === 'accounts') fetchHealth();
+  if (tabId === 'bridge') loadBridgeTab();
+  if (tabId === 'models') loadModelsTab();
+  if (tabId === 'config') loadConfigTab();
+  if (tabId === 'logs') refreshLogs();
 }
 
-/* ---------- 账号 ---------- */
-async function loadAccounts(){
-  const d=await api("/admin/config");
-  if(!d)return;
-  const rows=(d.camel_accounts||[]).map(a=>`
+async function fetchHealth() {
+  try {
+    const res = await fetch('/health');
+    const data = await res.json();
+    renderOverview(data);
+    renderAccounts(data);
+  } catch(e) {
+    console.error(e);
+  }
+}
+
+function renderOverview(data) {
+  const accounts = data.accounts || [];
+  const validCount = accounts.filter(a => a.enabled && a.is_valid).length;
+  const inFlightTotal = accounts.reduce((acc, a) => acc + (a.in_flight || 0), 0);
+
+  document.getElementById('stat-accounts').innerText = `${validCount} / ${accounts.length}`;
+  document.getElementById('stat-inflight').innerText = inFlightTotal;
+  document.getElementById('stat-models').innerText = data.model_count || 17;
+  document.getElementById('stat-bridge').innerHTML = data.mihomo_running ? 
+    '<span style="color:var(--ok)">● 运行中</span>' : '<span style="color:var(--text-dim)">○ 未启动</span>';
+
+  const tbody = document.getElementById('overviewTableBody');
+  if (!accounts.length) {
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:var(--text-dim);">尚未配置账号</td></tr>';
+    return;
+  }
+  tbody.innerHTML = accounts.map(a => `
     <tr>
-      <td class="mono">${esc(a.email)}</td>
-      <td>${badge(a.is_valid)}</td>
-      <td>${esc(a.login_time||"—")}</td>
-      <td>${esc(a.last_test||"—")}</td>
+      <td><strong>${a.email}</strong></td>
+      <td>${a.enabled ? '<span class="badge badge-ok">已启用</span>' : '<span class="badge badge-bad">已停用</span>'}</td>
+      <td>${a.has_custom_cookie ? '<span class="badge badge-purple">手动 Cookie</span>' : (a.cookie_ready ? '<span class="badge badge-ok">已就绪</span>' : '<span class="badge badge-warn">未登录</span>')}</td>
+      <td>${a.proxy ? `<code class="badge badge-info">${a.proxy}</code>` : '<span style="color:var(--text-dim)">直连</span>'}</td>
+      <td><span class="badge badge-info">${a.in_flight || 0}</span></td>
+      <td>${a.cooldown_seconds > 0 ? `<span class="badge badge-bad">${a.cooldown_seconds}s</span>` : '<span class="badge badge-ok">就绪</span>'}</td>
+      <td style="color:var(--text-dim); font-size:12px;">${a.last_test || a.login_time || '-'}</td>
+    </tr>
+  `).join('');
+}
+
+function renderAccounts(data) {
+  const accounts = data.accounts || [];
+  const tbody = document.getElementById('accountsTableBody');
+  if (!accounts.length) {
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:var(--text-dim);">暂无账号</td></tr>';
+    return;
+  }
+  tbody.innerHTML = accounts.map(a => `
+    <tr>
       <td>
-        <button class="btn sm" onclick="loginOne('${esc(a.email)}')">登录</button>
-        <button class="btn sm ghost" onclick="testOne('${esc(a.email)}')">测试</button>
-        <button class="btn sm danger" onclick="deleteAccount('${esc(a.email)}')">删除</button>
+        <label class="switch">
+          <input type="checkbox" ${a.enabled ? 'checked' : ''} onchange="toggleAccountEnabled('${a.email}')">
+          <span class="slider"></span>
+        </label>
       </td>
-    </tr>`).join("");
-  document.getElementById("accountsBody").innerHTML=rows||'<tr><td colspan="5" class="empty">暂无账号，请在上方添加</td></tr>';
-}
-async function loginOne(email){toast("正在登录 "+email+"…");const d=await api("/admin/login","POST",{email});if(d)toast(d.status==="ok"?"登录成功":"登录失败");loadAccounts();}
-async function testOne(email){toast("测试中…");await api("/admin/test-accounts","POST");loadAccounts();}
-async function addAccount(){
-  const email=document.getElementById("newEmail").value.trim();
-  const password=document.getElementById("newPwd").value;
-  if(!email||!password){toast("请填写邮箱和密码");return;}
-  const d=await api("/admin/config");
-  if(!d)return;
-  const list=d.camel_accounts||[];
-  if(list.some(a=>a.email===email)){toast("该账号已存在");return;}
-  list.push({email,password,is_valid:false,login_time:"",last_test:""});
-  const r=await api("/admin/config","POST",{camel_accounts:list});
-  if(r){toast("已添加 "+email);document.getElementById("newEmail").value="";document.getElementById("newPwd").value="";loadAccounts();}
-}
-async function deleteAccount(email){
-  if(!confirm("确定删除账号 "+email+" ？"))return;
-  const d=await api("/admin/config");
-  if(!d)return;
-  const list=(d.camel_accounts||[]).filter(a=>a.email!==email);
-  const r=await api("/admin/config","POST",{camel_accounts:list});
-  if(r){toast("已删除 "+email);loadAccounts();}
+      <td><strong>${a.email}</strong></td>
+      <td>${a.is_valid ? '<span class="badge badge-ok">有效</span>' : '<span class="badge badge-bad">异常</span>'}</td>
+      <td>${a.has_custom_cookie ? '<span class="badge badge-purple">已填 Cookie</span>' : '<span style="color:var(--text-dim)">自动登录</span>'}</td>
+      <td>${a.proxy ? `<code class="badge badge-info" title="${a.mihomo_node || ''}">${a.proxy}</code>` : '<span style="color:var(--text-dim)">直连</span>'}</td>
+      <td><span class="badge badge-info">${a.in_flight || 0}</span></td>
+      <td>
+        <div style="display:flex; gap:6px;">
+          <button class="btn btn-secondary btn-sm" onclick="openCookieModal('${a.email}')">填 Cookie</button>
+          <button class="btn btn-secondary btn-sm" onclick="loginSingleAccount('${a.email}')">重登</button>
+        </div>
+      </td>
+    </tr>
+  `).join('');
 }
 
-/* ---------- 配置 ---------- */
-async function loadConfig(){
-  const d=await api("/admin/config");
-  if(!d)return;
-  document.getElementById("configJson").value=JSON.stringify(d,null,2);
+async function toggleAccountEnabled(email) {
+  await fetch(`/admin/accounts/${encodeURIComponent(email)}/toggle`, { method: 'POST', headers: getAuthHeader() });
+  fetchHealth();
 }
-async function saveConfig(){
-  let obj=null;
-  try{obj=JSON.parse(document.getElementById("configJson").value);}catch(e){toast("JSON 解析失败："+e.message);return;}
-  const r=await api("/admin/config","POST",obj);
-  if(r){toast("配置已保存并生效");loadConfig();loadAccounts();}
-}
-async function reloadConfig(){loadConfig();toast("已重新加载");}
 
-/* ---------- 模型 ---------- */
-async function loadModels(){
-  const d=await api("/v1/models");
-  if(!d)return;
-  const list=d.data||[];
-  document.getElementById("modelCount").textContent="· "+list.length+" 个";
-  document.getElementById("modelsBox").innerHTML=list.map(m=>`
-    <span class="model-tag"><b>${esc(m.id)}</b><br><span class="ctx">${esc(m.owned_by||"CaMeL")} · ctx ${m.context_window?m.context_window.toLocaleString():"?"}</span></span>`).join("")||'<div class="empty">暂无模型</div>';
+async function loginSingleAccount(email) {
+  const res = await fetch('/admin/login', {
+    method: 'POST',
+    headers: getAuthHeader(),
+    body: JSON.stringify({ email })
+  });
+  const data = await res.json();
+  alert(data.status === 'ok' ? '登录成功！' : '登录失败');
+  fetchHealth();
 }
-async function refreshModels(){toast("正在刷新模型缓存…");const d=await api("/admin/refresh-models","POST");if(d){toast("模型已刷新");loadModels();loadDashboard();}}
 
-/* ---------- 日志 ---------- */
-function startLogs(){
-  if(logTimer)return;
-  const tick=async()=>{
-    if(logPaused)return;
-    const d=await api("/admin/logs");
-    if(!d)return;
-    const box=document.getElementById("logsBox");
-    const html=(d.logs||[]).map(l=>{
-      const cls=/\bWARNING\b/.test(l)?"lwarn":/\bERROR\b/.test(l)?"lerr":"";
-      return `<div class="${cls}">${esc(l)}</div>`;
-    }).join("");
-    box.innerHTML=html;
-    box.scrollTop=box.scrollHeight;
-  };
-  tick();
-  logTimer=setInterval(tick,3000);
-}
-function toggleLogPause(){
-  logPaused=!logPaused;
-  document.getElementById("logPauseBtn").textContent=logPaused?"▶ 继续":"⏸ 暂停";
-}
-function clearLogs(){document.getElementById("logsBox").innerHTML='<div class="empty">已清屏</div>';}
+// 代理桥 Tab
+async function loadBridgeTab() {
+  const [statusRes, subsRes, nodesRes] = await Promise.all([
+    fetch('/admin/mihomo/status', { headers: getAuthHeader() }),
+    fetch('/admin/mihomo/subscriptions', { headers: getAuthHeader() }),
+    fetch('/admin/mihomo/nodes', { headers: getAuthHeader() })
+  ]);
+  const sData = await statusRes.json();
+  const subData = await subsRes.json();
+  const nData = await nodesRes.json();
 
-/* ---------- 初始化 ---------- */
-if(PWD){document.getElementById("loginScreen").classList.add("hidden");document.getElementById("app").classList.remove("hidden");showTab("dashboard");}
-document.getElementById("pwd").addEventListener("keydown",e=>{if(e.key==="Enter")doLogin();});
+  document.getElementById('bridgeSwitch').checked = !!sData.running;
+  document.getElementById('bridgeStatusText').innerHTML = sData.running ? 
+    `<span style="color:var(--ok)">● 运行中 (PID: ${sData.pid})</span>` : `<span style="color:var(--text-dim)">○ 已停止</span>`;
+  document.getElementById('bridgeBinPath').innerText = sData.binary_path || '未找到内核二进制';
+
+  const subsList = document.getElementById('subscriptionsList');
+  const subs = subData.subscriptions || [];
+  if (!subs.length) {
+    subsList.innerHTML = '<div style="color:var(--text-dim); font-size:13px;">暂无订阅，点击右上角添加。</div>';
+  } else {
+    subsList.innerHTML = subs.map(s => `
+      <div style="background:rgba(0,0,0,0.25); border:1px solid var(--border-subtle); border-radius:var(--radius-sm); padding:10px 14px; display:flex; justify-content:space-between; align-items:center;">
+        <div>
+          <strong>${s.name}</strong> <span class="badge badge-info" style="margin-left:6px;">${s.node_count} 个节点</span>
+          <div style="font-size:11px; color:var(--text-dim); margin-top:2px;">更新于: ${s.updated_at}</div>
+        </div>
+        <div style="display:flex; gap:6px;">
+          <button class="btn btn-secondary btn-sm" onclick="refreshSub('${s.id}')">刷新</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteSub('${s.id}')">删除</button>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  const nTbody = document.getElementById('bridgeNodesTableBody');
+  const nodes = nData.nodes || [];
+  if (!nodes.length) {
+    nTbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:var(--text-dim);">暂无可用节点</td></tr>';
+    return;
+  }
+  nTbody.innerHTML = nodes.map(n => {
+    let delayBadge = '<span class="badge badge-warn">未测速</span>';
+    if (n.delay_ms) {
+      if (n.delay_ms < 200) delayBadge = `<span class="badge badge-ok">${n.delay_ms}ms</span>`;
+      else if (n.delay_ms < 800) delayBadge = `<span class="badge badge-warn">${n.delay_ms}ms</span>`;
+      else delayBadge = `<span class="badge badge-bad">${n.delay_ms}ms 超时</span>`;
+    }
+    return `
+      <tr>
+        <td><strong>${n.name}</strong></td>
+        <td><span class="badge badge-purple">${n.type}</span></td>
+        <td style="font-family:'JetBrains Mono'; font-size:12px;">${n.server}:${n.port}</td>
+        <td>${n.local_port ? `<code class="badge badge-info">127.0.0.1:${n.local_port}</code>` : '-'}</td>
+        <td>${delayBadge}</td>
+        <td>${n.assigned_account ? `<span class="badge badge-ok">${n.assigned_account}</span>` : '<span style="color:var(--text-dim)">未分配</span>'}</td>
+      </tr>
+    `;
+  }).join('');
+}
+
+async function toggleBridge(enabled) {
+  await fetch('/admin/mihomo/settings', {
+    method: 'POST',
+    headers: getAuthHeader(),
+    body: JSON.stringify({ enabled })
+  });
+  loadBridgeTab();
+}
+
+async function testBridgeDelays() {
+  const btn = event.target;
+  btn.disabled = true;
+  btn.innerText = '测速中...';
+  await fetch('/admin/mihomo/delay-test', { method: 'POST', headers: getAuthHeader() });
+  btn.disabled = false;
+  btn.innerText = '⚡ 批量测速';
+  loadBridgeTab();
+}
+
+async function assignBridgeNodes() {
+  await fetch('/admin/mihomo/assign', { method: 'POST', headers: getAuthHeader() });
+  alert('一键分配完成！已为全部账号绑定独占节点出口。');
+  loadBridgeTab();
+  fetchHealth();
+}
+
+// Playground
+async function sendPlaygroundMessage() {
+  const input = document.getElementById('playInput');
+  const text = input.value.trim();
+  if (!text) return;
+  
+  input.value = '';
+  const model = document.getElementById('playModel').value;
+  const system = document.getElementById('playSystem').value.trim();
+  const search = document.getElementById('playSearch').checked;
+
+  playConversation.push({ role: 'user', content: text });
+  renderPlayMessages();
+
+  const assistantBubble = { role: 'assistant', content: '' };
+  playConversation.push(assistantBubble);
+  renderPlayMessages();
+
+  const sendBtn = document.getElementById('playSendBtn');
+  sendBtn.disabled = true;
+  document.getElementById('playMetrics').style.display = 'block';
+
+  const t0 = performance.now();
+  let firstTokenReceived = false;
+
+  const msgs = [];
+  if (system) msgs.push({ role: 'system', content: system });
+  msgs.push(...playConversation.slice(0, -1));
+
+  try {
+    const resp = await fetch('/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer sk-camel'
+      },
+      body: JSON.stringify({
+        model,
+        messages: msgs,
+        stream: true,
+        web_search: search
+      })
+    });
+
+    const reader = resp.body.getReader();
+    const decoder = new TextDecoder();
+    let partial = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      if (!firstTokenReceived) {
+        firstTokenReceived = true;
+        document.getElementById('metricTTFT').innerText = `${Math.round(performance.now() - t0)}ms`;
+      }
+      partial += decoder.decode(value, { stream: true });
+      const lines = partial.split('\n');
+      partial = lines.pop();
+
+      for (const line of lines) {
+        if (line.startsWith('data: ') && line !== 'data: [DONE]') {
+          try {
+            const j = JSON.parse(line.slice(6));
+            const delta = j.choices[0]?.delta?.content || '';
+            assistantBubble.content += delta;
+            renderPlayMessages();
+            document.getElementById('metricLen').innerText = assistantBubble.content.length;
+          } catch(e) {}
+        }
+      }
+    }
+  } catch(err) {
+    assistantBubble.content += `\n[请求异常: ${err.message}]`;
+    renderPlayMessages();
+  } finally {
+    sendBtn.disabled = false;
+  }
+}
+
+function renderPlayMessages() {
+  const container = document.getElementById('playMessages');
+  container.innerHTML = playConversation.map(m => `
+    <div class="msg-bubble ${m.role === 'user' ? 'msg-user' : 'msg-assistant'}">${escapeHtml(m.content)}</div>
+  `).join('');
+  container.scrollTop = container.scrollHeight;
+}
+
+function handlePlayKeyDown(e) {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    sendPlaygroundMessage();
+  }
+}
+
+// 模型广场与别名
+async function loadModelsTab() {
+  const [aliasRes, modelsRes] = await Promise.all([
+    fetch('/admin/model-aliases', { headers: getAuthHeader() }),
+    fetch('/admin/models', { headers: getAuthHeader() })
+  ]);
+  const aliasData = await aliasRes.json();
+  const modelsData = await modelsRes.json();
+
+  document.getElementById('modelAliasesJson').value = JSON.stringify(aliasData.model_aliases || {}, null, 2);
+
+  const grid = document.getElementById('modelsGrid');
+  const models = modelsData.data || [];
+  grid.innerHTML = models.map(m => `
+    <div class="model-card">
+      <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+        <strong style="font-size:14px;">${m.id}</strong>
+        <span class="badge ${m.id.startsWith('gpt-image') ? 'badge-purple' : 'badge-ok'}">${m.owned_by || 'CaMeL'}</span>
+      </div>
+      <div style="font-size:12px; color:var(--text-muted); margin:8px 0;">上下文: ${m.context_window ? (m.context_window/1000) + 'k' : '标准'}</div>
+      <button class="btn btn-secondary btn-sm" style="width:100%;" onclick="copyText('${m.id}')">复制模型 ID</button>
+    </div>
+  `).join('');
+}
+
+async function saveModelAliases() {
+  try {
+    const aliases = JSON.parse(document.getElementById('modelAliasesJson').value);
+    await fetch('/admin/model-aliases', {
+      method: 'POST',
+      headers: getAuthHeader(),
+      body: JSON.stringify({ model_aliases: aliases })
+    });
+    alert('模型别名保存成功！');
+  } catch(e) {
+    alert('JSON 格式错误: ' + e.message);
+  }
+}
+
+// Config Tab
+async function loadConfigTab() {
+  const res = await fetch('/admin/config', { headers: getAuthHeader() });
+  fullConfigData = await res.json();
+  document.getElementById('fullConfigTextarea').value = JSON.stringify(fullConfigData, null, 2);
+}
+
+function formatConfigJson() {
+  try {
+    const j = JSON.parse(document.getElementById('fullConfigTextarea').value);
+    document.getElementById('fullConfigTextarea').value = JSON.stringify(j, null, 2);
+  } catch(e) { alert('JSON 语法错误'); }
+}
+
+async function saveFullConfig() {
+  try {
+    const j = JSON.parse(document.getElementById('fullConfigTextarea').value);
+    await fetch('/admin/config', {
+      method: 'POST',
+      headers: getAuthHeader(),
+      body: JSON.stringify(j)
+    });
+    alert('配置已成功保存并热生效！');
+    fetchHealth();
+  } catch(e) {
+    alert('保存失败: ' + e.message);
+  }
+}
+
+// Logs Tab
+async function refreshLogs() {
+  const res = await fetch('/admin/logs', { headers: getAuthHeader() });
+  const data = await res.json();
+  const term = document.getElementById('terminalLog');
+  term.innerHTML = (data.logs || []).map(l => {
+    let cls = 'log-info';
+    if (l.includes('[WARNING]') || l.includes('[WARN]')) cls = 'log-warn';
+    if (l.includes('[ERROR]') || l.includes('FAIL')) cls = 'log-err';
+    return `<div class="log-line ${cls}">${escapeHtml(l)}</div>`;
+  }).join('');
+  if (logAutoScroll) term.scrollTop = term.scrollHeight;
+}
+
+function toggleLogAutoScroll() {
+  logAutoScroll = !logAutoScroll;
+  document.getElementById('logScrollBtn').innerText = `自动滚动: ${logAutoScroll ? '开' : '关'}`;
+}
+
+// Modals
+function openModal(id) { document.getElementById(id).classList.add('active'); }
+function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+
+function openAddAccountModal() { openModal('addAccountModal'); }
+async function submitAddAccount() {
+  const email = document.getElementById('modalEmail').value.trim();
+  const password = document.getElementById('modalPassword').value.trim();
+  const cookie = document.getElementById('modalCookie').value.trim();
+  const proxy = document.getElementById('modalProxy').value.trim();
+
+  if (!email) { alert('邮箱不能为空'); return; }
+
+  const cfgRes = await fetch('/admin/config', { headers: getAuthHeader() });
+  const cfg = await cfgRes.json();
+  cfg.camel_accounts = cfg.camel_accounts || [];
+  cfg.camel_accounts.push({ email, password, cookie, proxy, enabled: true });
+
+  await fetch('/admin/config', {
+    method: 'POST',
+    headers: getAuthHeader(),
+    body: JSON.stringify(cfg)
+  });
+
+  closeModal('addAccountModal');
+  fetchHealth();
+}
+
+let activeCookieTargetEmail = '';
+function openCookieModal(email) {
+  activeCookieTargetEmail = email;
+  document.getElementById('cookieModalEmail').innerText = email;
+  openModal('cookieModal');
+}
+
+async function submitCookieModal() {
+  const cookie = document.getElementById('cookieModalValue').value.trim();
+  if (!cookie) return;
+  await fetch('/admin/login', {
+    method: 'POST',
+    headers: getAuthHeader(),
+    body: JSON.stringify({ email: activeCookieTargetEmail, cookie })
+  });
+  closeModal('cookieModal');
+  alert('Cookie 录入成功！');
+  fetchHealth();
+}
+
+function openAddSubModal() { openModal('addSubModal'); }
+async function submitAddSub() {
+  const name = document.getElementById('subModalName').value.trim();
+  const url = document.getElementById('subModalUrl').value.trim();
+  if (!url) return;
+  const res = await fetch('/admin/mihomo/subscriptions', {
+    method: 'POST',
+    headers: getAuthHeader(),
+    body: JSON.stringify({ name, url })
+  });
+  if (res.ok) {
+    closeModal('addSubModal');
+    loadBridgeTab();
+  } else {
+    alert('添加订阅失败');
+  }
+}
+
+async function deleteSub(subId) {
+  if (!confirm('确定删除此订阅吗？')) return;
+  await fetch(`/admin/mihomo/subscriptions/${subId}`, { method: 'DELETE', headers: getAuthHeader() });
+  loadBridgeTab();
+}
+
+async function refreshSub(subId) {
+  await fetch(`/admin/mihomo/subscriptions/${subId}/refresh`, { method: 'POST', headers: getAuthHeader() });
+  loadBridgeTab();
+}
+
+// Utils
+function copyText(txt) {
+  navigator.clipboard.writeText(txt);
+  alert('已复制到剪贴板: ' + txt);
+}
+function copyApiConfig() {
+  const cfg = `BASE_URL: http://127.0.0.1:8000/v1\nAPI_KEY: sk-camel`;
+  navigator.clipboard.writeText(cfg);
+  alert('已复制客户端配置参数！');
+}
+function copyAllLogs() {
+  navigator.clipboard.writeText(document.getElementById('terminalLog').innerText);
+  alert('日志已复制！');
+}
+function escapeHtml(s) {
+  return (s || '').replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+window.onload = () => {
+  fetchHealth();
+  setInterval(() => {
+    if (currentTab === 'logs') refreshLogs();
+    if (currentTab === 'dashboard') fetchHealth();
+  }, 5000);
+};
 </script>
 </body>
 </html>

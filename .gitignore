@@ -2,6 +2,8 @@
 config.json
 .env
 accounts.json
+mihomo_subscriptions.json
+data/
 # 账号池文档含明文密码，仅限本地
 docs/账号池文档.md
 

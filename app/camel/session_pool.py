@@ -8,11 +8,20 @@ class SessionPool:
         self.rotate_turns = rotate_turns
         # email -> {"session_id": str, "turns": int, "title_synced": bool}
         self._active: dict[str, dict] = {}
-        self._lock = asyncio.Lock()
+        self._lock_obj: asyncio.Lock | None = None
+
+    def _get_lock(self) -> asyncio.Lock:
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            loop = None
+        if self._lock_obj is None or (getattr(self._lock_obj, "_loop", None) is not None and self._lock_obj._loop is not loop):
+            self._lock_obj = asyncio.Lock()
+        return self._lock_obj
 
     async def get_session(self, http, client, model: str, email: str) -> str:
         """取当前活跃会话；没有则创建。模型切换无需换会话（payload 自带 model）。"""
-        async with self._lock:
+        async with self._get_lock():
             entry = self._active.get(email)
             if entry is None:
                 entry = await self._new_session(http, client, model, email)

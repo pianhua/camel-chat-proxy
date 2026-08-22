@@ -3,19 +3,41 @@
   "admin_password": "admin",
   "camel_accounts": [
     {
-      "email": "your-email@example.com",
+      "email": "user1@example.com",
+      "password": "",
+      "cookie": "your-camel-session-cookie",
+      "proxy": "socks5://127.0.0.1:10801",
+      "enabled": true
+    },
+    {
+      "email": "user2@example.com",
       "password": "your-password",
-      "is_valid": false,
-      "login_time": "",
-      "last_test": ""
+      "cookie": "",
+      "proxy": "",
+      "enabled": true
     }
   ],
+  "model_aliases": {
+    "gpt-4o": "claude-opus-4-7",
+    "gpt-4o-mini": "claude-haiku-4-5",
+    "gpt-5": "gpt-5.5",
+    "claude-3-7-sonnet": "claude-sonnet-5",
+    "claude-3-5-sonnet": "claude-sonnet-4-6",
+    "deepseek-r1": "deepseek-v4-pro",
+    "deepseek-v3": "deepseek-v3.2"
+  },
   "web_search": false,
   "refresh_interval": 21600,
   "session_rotate_turns": 10,
-  "message_mode": "auto",
-  "model_contexts": {},
+  "message_mode": "native",
   "max_inflight_per_account": 1,
   "account_cooldown_seconds": 120,
-  "account_acquire_timeout": 30
+  "account_acquire_timeout": 30,
+  "mihomo": {
+    "enabled": false,
+    "binary_path": "",
+    "base_port": 10801,
+    "api_port": 19090,
+    "auto_bind": false
+  }
 }

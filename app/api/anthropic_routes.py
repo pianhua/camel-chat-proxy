@@ -51,30 +51,30 @@ async def anthropic_messages(request: Request, x_api_key: Optional[str] = Header
                  ("presencePenalty", body.get("presence_penalty"))):
         if v is not None:
             sampling[k] = v
-    message_mode = body.get("message_mode", config_manager.config.message_mode or "auto")
+    message_mode = body.get("message_mode", config_manager.config.message_mode or "native")
 
     openai_messages = to_openai_messages(messages, body.get("system", ""))
-
-    http = await get_http_client()
 
     excluded: set = set()
     attempt = 0
     while True:
         try:
-            account, camel = await pick_ready_account(http, exclude=excluded)
+            account, camel = await pick_ready_account(exclude=excluded)
         except HTTPException as e:
             raise HTTPException(status_code=e.status_code, detail=_err("service_unavailable", str(e.detail)))
 
+        account_http = await get_http_client(account.proxy)
+
         try:
-            session_id = await session_pool.get_session(http, camel, model, account.email)
-            payload = await build_payload(http, camel, openai_messages, model, session_id, web_search,
+            session_id = await session_pool.get_session(account_http, camel, model, account.email)
+            payload = await build_payload(account_http, camel, openai_messages, model, session_id, web_search,
                                           sampling=sampling or None, message_mode=message_mode)
             session_pool.record_turn(account.email)
             msg_id = str(uuid.uuid4())
 
             async def _after_first_reply():
                 if payload.get("userText"):
-                    await session_pool.sync_title(http, camel, account.email, payload["userText"])
+                    await session_pool.sync_title(account_http, camel, account.email, payload["userText"])
 
             if stream:
                 async def _stream_sse():
@@ -91,7 +91,7 @@ async def anthropic_messages(request: Request, x_api_key: Optional[str] = Header
                         yield f"event: message_start\ndata: {json.dumps(start_msg, ensure_ascii=False)}\n\n"
                         yield f"event: content_block_start\ndata: {json.dumps({'type': 'content_block_start', 'index': 0, 'content_block': {'type': 'text', 'text': ''}})}\n\n"
                         first = True
-                        async for chunk in camel.stream_chat(http, payload):
+                        async for chunk in camel.stream_chat(account_http, payload):
                             if first:
                                 first = False
                                 await _after_first_reply()
@@ -107,7 +107,7 @@ async def anthropic_messages(request: Request, x_api_key: Optional[str] = Header
                 return StreamingResponse(_stream_sse(), media_type="text/event-stream")
 
             try:
-                text = await camel.chat_completion(http, payload)
+                text = await camel.chat_completion(account_http, payload)
                 await _after_first_reply()
             except CamelAPIError as e:
                 await account_pool.mark_failed(account)

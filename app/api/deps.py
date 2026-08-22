@@ -11,11 +11,28 @@ from app.camel.client import CamelClient
 _clients: dict[str, CamelClient] = {}
 
 
+import time
+
+
+from app.core.http import get_http_client
+
+
 def get_camel_client(account: CamelAccount) -> CamelClient:
+    proxy = getattr(account, "proxy", "")
     if account.email not in _clients:
-        _clients[account.email] = CamelClient(account.email, account.password)
+        _clients[account.email] = CamelClient(
+            account.email,
+            account.password,
+            getattr(account, "cookie", ""),
+            proxy=proxy
+        )
     c = _clients[account.email]
     c.password = account.password  # 密码可能在面板里更新过
+    c.proxy = proxy
+    acc_cookie = getattr(account, "cookie", "")
+    if acc_cookie and (not c.cookie or c.cookie != acc_cookie):
+        c.cookie = acc_cookie
+        c.cookie_time = time.time()
     return c
 
 
@@ -29,7 +46,7 @@ def check_api_key(authorization: Optional[str], x_api_key: Optional[str]):
         raise HTTPException(status_code=401, detail={"error": {"message": "invalid api key"}})
 
 
-async def pick_ready_account(http, exclude: Optional[Set[str]] = None):
+async def pick_ready_account(http=None, exclude: Optional[Set[str]] = None):
     """从账号池获取一个可用账号（并发槽位 + 排队 + 冷却），确保 cookie 就绪。
 
     返回 (account, client)。调用方必须在请求结束时调用 account_pool.release(account)；
@@ -38,17 +55,19 @@ async def pick_ready_account(http, exclude: Optional[Set[str]] = None):
     account = await account_pool.acquire(exclude=exclude)
     if not account:
         raise HTTPException(status_code=503, detail={
-            "error": {"message": "no available camel account (all busy or cooling down)"}})
+            "error": {"message": "no available camel account (all busy, disabled, or cooling down)"}})
     client = get_camel_client(account)
+    account_http = http or await get_http_client(account.proxy)
     try:
-        if not await client.ensure_cookie(http):
+        if not await client.ensure_cookie(account_http):
             await account_pool.mark_failed(account)
+            await account_pool.release(account)
             raise HTTPException(status_code=503, detail={
                 "error": {"message": f"login failed for {account.email}"}})
     except HTTPException:
-        await account_pool.mark_failed(account)
         raise
     except Exception:
         await account_pool.mark_failed(account)
+        await account_pool.release(account)
         raise
     return account, client

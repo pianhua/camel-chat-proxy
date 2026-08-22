@@ -30,9 +30,27 @@ class AccountPool:
     def __init__(self):
         self._in_use: dict[str, int] = {}            # email -> 当前占用数
         self._cooldown_until: dict[str, float] = {}  # email -> 冷却截止时间戳
-        self._lock = asyncio.Lock()
-        self._wake = asyncio.Event()
-        self._wake.set()
+        self._lock_obj: Optional[asyncio.Lock] = None
+        self._wake_obj: Optional[asyncio.Event] = None
+
+    def _get_lock(self) -> asyncio.Lock:
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            loop = None
+        if self._lock_obj is None or (getattr(self._lock_obj, "_loop", None) is not None and self._lock_obj._loop is not loop):
+            self._lock_obj = asyncio.Lock()
+        return self._lock_obj
+
+    def _get_wake(self) -> asyncio.Event:
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            loop = None
+        if self._wake_obj is None or (getattr(self._wake_obj, "_loop", None) is not None and self._wake_obj._loop is not loop):
+            self._wake_obj = asyncio.Event()
+            self._wake_obj.set()
+        return self._wake_obj
 
     # ---- 配置读取（每次实时读，支持面板改配置后立即生效）----
     def _max_inflight(self) -> int:
@@ -53,7 +71,7 @@ class AccountPool:
         exclude = exclude or set()
         deadline = time.monotonic() + self._acquire_timeout()
         while True:
-            async with self._lock:
+            async with self._get_lock():
                 acc = self._try_acquire_locked(exclude)
                 if acc is not None:
                     return acc
@@ -66,25 +84,25 @@ class AccountPool:
                 pass
 
     async def release(self, account: CamelAccount):
-        async with self._lock:
+        async with self._get_lock():
             email = account.email
             self._in_use[email] = max(0, self._in_use.get(email, 0) - 1)
-            self._wake.set()
+            self._get_wake().set()
 
     async def mark_failed(self, account: CamelAccount):
-        async with self._lock:
+        async with self._get_lock():
             email = account.email
             account.is_valid = False
             if self._cooldown_seconds() > 0:
                 self._cooldown_until[email] = time.time() + self._cooldown_seconds()
-            self._wake.set()
+            self._get_wake().set()
 
     async def mark_ok(self, account: CamelAccount):
-        async with self._lock:
+        async with self._get_lock():
             email = account.email
             account.is_valid = True
             self._cooldown_until.pop(email, None)
-            self._wake.set()
+            self._get_wake().set()
 
     # ---- 内部 ----
     def _try_acquire_locked(self, exclude: Set[str]) -> Optional[CamelAccount]:
@@ -99,6 +117,8 @@ class AccountPool:
             config_manager.account_idx += 1
             tried += 1
             email = account.email
+            if not getattr(account, "enabled", True):
+                continue
             if email in exclude:
                 continue
             if self._is_cooling(email):
@@ -110,8 +130,9 @@ class AccountPool:
         return None
 
     async def _wait_for_change(self):
-        self._wake.clear()
-        await self._wake.wait()
+        wake = self._get_wake()
+        wake.clear()
+        await wake.wait()
 
 
 account_pool = AccountPool()

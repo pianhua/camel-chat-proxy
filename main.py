@@ -48,13 +48,22 @@ async def _background_check_accounts():
         logger.info("[Startup] No accounts configured. Add one via web UI at /")
 
 
+from app.core.mihomo import mihomo_manager
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("=" * 46)
     logger.info("  CaMeL Chat Proxy v4.0")
     logger.info("=" * 46)
     asyncio.create_task(_background_check_accounts())
+    mihomo_cfg = config_manager.config.mihomo or {}
+    mihomo_manager.init_from_config(mihomo_cfg)
+    if mihomo_manager.enabled:
+        logger.info("[Startup] Auto-starting Mihomo proxy bridge on base port %d...", mihomo_manager.base_port)
+        asyncio.create_task(mihomo_manager.apply_and_restart())
     yield
+    mihomo_manager.stop()
     await close_http_client()
 
 

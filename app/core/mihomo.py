@@ -39,6 +39,19 @@ class MihomoManager:
         self.node_health: Dict[str, dict] = {}  # node_name -> {delay_ms: int, ok: bool, time: str}
         self.load_subscriptions()
 
+    def init_from_config(self, cfg):
+        """从全局 Config 初始化运行时参数。"""
+        if isinstance(cfg, dict):
+            self.enabled = bool(cfg.get("enabled", False))
+            self.binary_path = str(cfg.get("binary_path", "") or "")
+            self.base_port = int(cfg.get("base_port", 10801) or 10801)
+            self.api_port = int(cfg.get("api_port", 19090) or 19090)
+        else:
+            self.enabled = bool(getattr(cfg, "enabled", False))
+            self.binary_path = str(getattr(cfg, "binary_path", "") or "")
+            self.base_port = int(getattr(cfg, "base_port", 10801) or 10801)
+            self.api_port = int(getattr(cfg, "api_port", 19090) or 19090)
+
     def load_subscriptions(self):
         """加载 mihomo_subscriptions.json 独立配置文件。"""
         if SUBSCRIPTIONS_FILE.exists():
@@ -85,8 +98,48 @@ class MihomoManager:
 
         return None
 
+    def _is_valid_node(self, node: dict) -> bool:
+        """过滤广告、异常占位、localhost 或参数明显非法的垃圾节点。"""
+        if not isinstance(node, dict):
+            return False
+
+        name = str(node.get("name", "")).strip()
+        server = str(node.get("server", "")).strip()
+        node_type = str(node.get("type", "")).lower().strip()
+
+        # 1. 基础字段检查
+        if not name or not server or not node_type:
+            return False
+
+        # 2. 检查 server 是否为本地/无效回环地址
+        if server.lower() in ("127.0.0.1", "localhost", "0.0.0.0", "::1", "null", "undefined"):
+            return False
+
+        # 3. 检查端口合法性
+        try:
+            port = int(node.get("port", 0))
+            if port < 1 or port > 65535:
+                return False
+        except (ValueError, TypeError):
+            return False
+
+        # 4. 检查是否为垃圾/广告/错误提示行
+        garbage_keywords = (
+            "生成器异常", "订阅异常", "剩余流量", "到期时间", "距离下次重置",
+            "官方网站", "官网地址", "TG频道", "TG群", "加入群组", "购买订阅",
+            "套餐到期", "流量已用", "重置日", "发布页", "更新提示", "请更新"
+        )
+        if any(kw in name for kw in garbage_keywords) or any(kw in server for kw in garbage_keywords):
+            return False
+
+        # 5. 检查 server 不能包含协议头或中文
+        if "://" in server or any('\u4e00' <= char <= '\u9fff' for char in server):
+            return False
+
+        return True
+
     def parse_subscription_text(self, text: str, sub_name: str = "Sub") -> List[dict]:
-        """解析订阅文本（支持 Clash YAML、Base64 或按行 URI）。"""
+        """解析订阅文本（支持 Clash YAML、Base64 或按行 URI），并自动过滤垃圾节点。"""
         text = text.strip()
         nodes = []
 
@@ -97,7 +150,9 @@ class MihomoManager:
                 data = yaml.safe_load(text)
                 proxies = data.get("proxies") or data.get("Proxy") or []
                 if isinstance(proxies, list) and proxies:
-                    return proxies
+                    valid_proxies = [p for p in proxies if self._is_valid_node(p)]
+                    if valid_proxies:
+                        return valid_proxies
             except Exception:
                 pass
 
@@ -114,7 +169,7 @@ class MihomoManager:
         lines = [line.strip() for line in text.splitlines() if line.strip()]
         for idx, line in enumerate(lines):
             node = self._parse_node_link(line, idx + 1)
-            if node:
+            if node and self._is_valid_node(node):
                 nodes.append(node)
 
         return nodes
@@ -352,23 +407,29 @@ rules:
                     pass
             self.process = None
 
-    async def test_node_delay(self, node_name: str, target_url: str = "https://www.google.com/generate_204", timeout_s: float = 4.0) -> dict:
-        """经节点本地 SOCKS5 端口测试真实网络延迟。"""
+    async def test_node_delay(self, node_name: str, target_url: str = "https://www.google.com/generate_204", timeout_s: float = 7.0) -> dict:
+        """经节点本地 SOCKS5 端口测试真实网络延迟（带 1 次失败重试，避免 ECH/TLS 握手延迟误判）。"""
         port = self.allocate_port_for_node(node_name)
         proxy_url = f"socks5://127.0.0.1:{port}"
 
-        t0 = time.time()
         ok = False
-        delay_ms = 0
-        try:
-            async with httpx.AsyncClient(proxy=proxy_url, timeout=timeout_s) as client:
-                resp = await client.get(target_url)
-                if resp.status_code in (200, 204):
-                    ok = True
-                    delay_ms = int((time.time() - t0) * 1000)
-        except Exception:
-            ok = False
-            delay_ms = 9999
+        delay_ms = 9999
+
+        for attempt in range(2):
+            t0 = time.time()
+            try:
+                async with httpx.AsyncClient(proxy=proxy_url, timeout=timeout_s, trust_env=False) as client:
+                    resp = await client.get(target_url)
+                    if resp.status_code in (200, 204):
+                        ok = True
+                        delay_ms = int((time.time() - t0) * 1000)
+                        break
+            except Exception:
+                if attempt == 0:
+                    await asyncio.sleep(0.5)
+                else:
+                    ok = False
+                    delay_ms = 9999
 
         result = {
             "delay_ms": delay_ms,
@@ -389,7 +450,7 @@ rules:
         for n in nodes:
             self.allocate_port_for_node(n["name"])
         await self.apply_and_restart()
-        await asyncio.sleep(1.5)
+        await asyncio.sleep(3.0)  # 预留 3s 供 Mihomo 进程与全部 SOCKS5 监听端口就绪
 
         sem = asyncio.Semaphore(concurrency)
 

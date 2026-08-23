@@ -1,5 +1,6 @@
 """管理端点 — 账号/配置/模型/用量。"""
 
+import re
 import time
 from typing import Optional
 from fastapi import APIRouter, HTTPException, Header, Request
@@ -213,18 +214,26 @@ async def get_mihomo_status(x_admin_password: Optional[str] = Header(None, alias
 async def set_mihomo_settings(request: Request, x_admin_password: Optional[str] = Header(None, alias="x-admin-password")):
     verify_admin(x_admin_password)
     body = await request.json()
+    if not isinstance(config_manager.config.mihomo, dict):
+        config_manager.config.mihomo = {}
+
     if "binary_path" in body:
-        mihomo_manager.binary_path = body["binary_path"].strip()
+        mihomo_manager.binary_path = str(body["binary_path"]).strip()
+        config_manager.config.mihomo["binary_path"] = mihomo_manager.binary_path
     if "base_port" in body:
         mihomo_manager.base_port = int(body["base_port"])
+        config_manager.config.mihomo["base_port"] = mihomo_manager.base_port
     if "api_port" in body:
         mihomo_manager.api_port = int(body["api_port"])
+        config_manager.config.mihomo["api_port"] = mihomo_manager.api_port
     if "enabled" in body:
         mihomo_manager.enabled = bool(body["enabled"])
+        config_manager.config.mihomo["enabled"] = mihomo_manager.enabled
         if mihomo_manager.enabled:
             await mihomo_manager.apply_and_restart()
         else:
             mihomo_manager.stop()
+    config_manager.save()
     return {"status": "ok"}
 
 
@@ -272,10 +281,23 @@ async def refresh_mihomo_subscription(sub_id: str, x_admin_password: Optional[st
 async def get_mihomo_nodes(x_admin_password: Optional[str] = Header(None, alias="x-admin-password")):
     verify_admin(x_admin_password)
     nodes = mihomo_manager.get_all_nodes()
-    # 标注绑定的账号
-    acc_map = {a.mihomo_node: a.email for a in config_manager.config.camel_accounts if a.mihomo_node}
+    # 标注绑定的账号：支持 mihomo_node 精确匹配 + proxy 端口反向匹配
+    node_to_email = {}
+    port_to_email = {}
+    for a in config_manager.config.camel_accounts:
+        if getattr(a, "mihomo_node", ""):
+            node_to_email[a.mihomo_node] = a.email
+        if getattr(a, "proxy", ""):
+            m = re.search(r':(\d+)', a.proxy)
+            if m:
+                try:
+                    port_to_email[int(m.group(1))] = a.email
+                except ValueError:
+                    pass
+
     for n in nodes:
-        n["assigned_account"] = acc_map.get(n["name"])
+        local_port = n.get("local_port")
+        n["assigned_account"] = node_to_email.get(n["name"]) or (port_to_email.get(local_port) if local_port else None)
     return {"status": "ok", "nodes": nodes}
 
 

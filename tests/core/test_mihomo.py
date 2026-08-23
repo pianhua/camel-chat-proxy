@@ -88,3 +88,72 @@ def test_assign_nodes_to_accounts():
     assert "1080" in assigned[0].proxy
     assert assigned[1].mihomo_node == "Slow Node"
     assert assigned[2].proxy == ""  # disabled account skipped
+
+
+def test_filter_garbage_nodes():
+    mgr = MihomoManager()
+    yaml_with_garbage = """
+proxies:
+  - name: "sub://cm.soso.edu.kg优选订阅生成器异常:"
+    type: vless
+    server: 127.0.0.1
+    port: 1234
+    uuid: "some-uuid"
+  - name: "剩余流量：100GB"
+    type: ss
+    server: 8.8.8.8
+    port: 8388
+    cipher: aes-128-gcm
+    password: "pwd"
+  - name: "官网发布页 https://example.com"
+    type: trojan
+    server: 1.1.1.1
+    port: 443
+    password: "pwd"
+  - name: "有效日本 01"
+    type: vmess
+    server: 104.16.1.1
+    port: 443
+    uuid: "valid-uuid"
+"""
+    nodes = mgr.parse_subscription_text(yaml_with_garbage)
+    assert len(nodes) == 1
+    assert nodes[0]["name"] == "有效日本 01"
+    assert nodes[0]["server"] == "104.16.1.1"
+
+
+def test_init_from_config():
+    mgr = MihomoManager()
+    mgr.init_from_config({
+        "enabled": True,
+        "binary_path": "/usr/local/bin/mihomo",
+        "base_port": 20801,
+        "api_port": 29090
+    })
+    assert mgr.enabled is True
+    assert mgr.binary_path == "/usr/local/bin/mihomo"
+    assert mgr.base_port == 20801
+    assert mgr.api_port == 29090
+
+
+@pytest.mark.asyncio
+async def test_get_mihomo_nodes_assigned_by_proxy_port(monkeypatch):
+    from app.api.admin_routes import get_mihomo_nodes
+    from app.core.config import config_manager, CamelAccount
+    from app.core.mihomo import mihomo_manager
+
+    acc1 = CamelAccount(email="port_user@a.com", proxy="socks5://127.0.0.1:20846", mihomo_node="")
+    acc2 = CamelAccount(email="named_user@b.com", proxy="", mihomo_node="Named-Node")
+
+    monkeypatch.setattr(config_manager.config, "camel_accounts", [acc1, acc2])
+    monkeypatch.setattr(mihomo_manager, "get_all_nodes", lambda: [
+        {"name": "Port-Node", "local_port": 20846, "server": "1.1.1.1", "port": 443, "type": "ss"},
+        {"name": "Named-Node", "local_port": 20847, "server": "2.2.2.2", "port": 443, "type": "ss"},
+        {"name": "Unbound-Node", "local_port": 20848, "server": "3.3.3.3", "port": 443, "type": "ss"},
+    ])
+
+    res = await get_mihomo_nodes("admin")
+    nodes = res["nodes"]
+    assert nodes[0]["assigned_account"] == "port_user@a.com"
+    assert nodes[1]["assigned_account"] == "named_user@b.com"
+    assert nodes[2]["assigned_account"] is None
